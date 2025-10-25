@@ -498,8 +498,8 @@ export default function BibliaAveMariaApp() {
   };
 
   const calcularTimestampsAutomaticos = async (capituloId) => {
-    if (!confirm('Isso vai calcular os timestamps automaticamente. Deseja continuar?')) {
-      return;
+    if (!window.confirm('Isso vai calcular os timestamps automaticamente. Deseja continuar?')) {
+    return;
     }
     
     setProcessando(true);
