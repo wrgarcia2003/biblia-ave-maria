@@ -3,7 +3,7 @@ import { Play, Pause, SkipBack, SkipForward, Book, ChevronLeft, Volume2, Setting
 import { createClient } from '@supabase/supabase-js';
 
 // =====================================================
-// CONFIGURAÇÃO DO SUPABASE
+// CONFIGURAÇÃO DO SUPABASE (usando fetch direto)
 // =====================================================
 // OPÇÃO 1: Usando variáveis de ambiente (.env) - RECOMENDADO
 const SUPABASE_URL  = process.env.REACT_APP_SUPABASE_URL || '';
@@ -165,7 +165,7 @@ export default function BibliaAveMariaApp() {
     setCarregando(true);
     
     try {
-      if (email === 'admin@biblia.com' && senha === 'admin123') {
+      if (email === 'admin@biblia.com' && senha === 'spider123') {
         setUsuario({ email, nome: 'Administrador' });
         setIsAdmin(true);
         await carregarLivros();
@@ -397,55 +397,94 @@ export default function BibliaAveMariaApp() {
     setUploadProgress(0);
 
     try {
-      const fileName = `${livroNome.toLowerCase().replace(/\s/g, '_')}_cap${capituloNum}.mp3`;
+      // Normalizar nome do arquivo - remover acentos e espaços
+      const nomeLivroNormalizado = livroNome
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+        .toLowerCase()
+        .replace(/\s+/g, '_') // Substitui espaços por underline
+        .replace(/[^a-z0-9_]/g, ''); // Remove caracteres especiais
       
+      const fileName = `${nomeLivroNormalizado}_cap${capituloNum}.mp3`;
+      
+      console.log('Enviando arquivo:', fileName);
+      
+      setUploadProgress(25);
+
+      // Upload do áudio para Storage
       const uploadRes = await fetch(`${SUPABASE_URL}/storage/v1/object/audios-biblia/${fileName}`, {
         method: 'POST',
         headers: {
           'apikey': SUPABASE_KEY,
-          'Authorization': `Bearer ${SUPABASE_KEY}`
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': file.type || 'audio/mpeg',
+          'x-upsert': 'true' // Permite substituir arquivo existente
         },
         body: file
       });
 
+      if (!uploadRes.ok) {
+        const errorText = await uploadRes.text();
+        console.error('Erro no upload:', errorText);
+        throw new Error(`Erro no upload: ${uploadRes.status} - ${errorText}`);
+      }
+
       setUploadProgress(50);
 
+      // URL pública do arquivo
       const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/audios-biblia/${fileName}`;
+      
+      console.log('Áudio enviado! URL:', publicUrl);
 
+      // Detectar duração do áudio
       const audio = new Audio();
       audio.src = URL.createObjectURL(file);
       
-      await new Promise((resolve) => {
+      await new Promise((resolve, reject) => {
         audio.onloadedmetadata = () => resolve();
+        audio.onerror = () => reject(new Error('Erro ao carregar metadados do áudio'));
+        setTimeout(() => reject(new Error('Timeout ao carregar áudio')), 10000);
       });
 
-      const duracaoAudio = audio.duration;
+      const duracaoAudio = Math.round(audio.duration);
 
       setUploadProgress(75);
 
-      await fetch(`${SUPABASE_URL}/rest/v1/capitulos?livro_id=eq.${livroSelecionado.id}&numero=eq.${capituloNum}`, {
+      console.log('Duração detectada:', duracaoAudio, 'segundos');
+
+      // Atualizar banco de dados
+      const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/capitulos?livro_id=eq.${livroSelecionado.id}&numero=eq.${capituloNum}`, {
         method: 'PATCH',
         headers: {
           'apikey': SUPABASE_KEY,
           'Authorization': `Bearer ${SUPABASE_KEY}`,
           'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
+          'Prefer': 'return=representation'
         },
         body: JSON.stringify({
           audio_url: publicUrl,
-          audio_duracao_segundos: Math.round(duracaoAudio),
+          audio_duracao_segundos: duracaoAudio,
           audio_tamanho_bytes: file.size
         })
       });
 
+      if (!updateRes.ok) {
+        const errorText = await updateRes.text();
+        console.error('Erro ao atualizar banco:', errorText);
+        throw new Error('Erro ao atualizar banco de dados');
+      }
+
       setUploadProgress(100);
-      alert('✅ Áudio enviado e configurado com sucesso!');
       
+      console.log('✅ Áudio configurado com sucesso!');
+      alert(`✅ Áudio enviado com sucesso!\n\nArquivo: ${fileName}\nDuração: ${duracaoAudio}s\nTamanho: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
+      
+      // Recarregar capítulos
       await carregarCapitulos(livroSelecionado.id);
 
     } catch (error) {
       console.error('Erro no upload:', error);
-      alert('❌ Erro ao enviar áudio: ' + error.message);
+      alert(`❌ Erro ao enviar áudio: ${error.message}\n\nVerifique:\n1. Se o bucket "audios-biblia" existe\n2. Se é público\n3. Se as credenciais estão corretas`);
     } finally {
       setProcessando(false);
       setUploadProgress(0);
@@ -499,7 +538,7 @@ export default function BibliaAveMariaApp() {
 
   const calcularTimestampsAutomaticos = async (capituloId) => {
     if (!window.confirm('Isso vai calcular os timestamps automaticamente. Deseja continuar?')) {
-    return;
+      return;
     }
     
     setProcessando(true);
