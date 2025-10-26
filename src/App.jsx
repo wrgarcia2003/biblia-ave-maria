@@ -1,5 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Book, ChevronLeft, Volume2, Settings, Upload, Lock, LogOut, User } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Book, ChevronLeft, Volume2, Settings, Upload, Lock, LogOut, User, Calendar } from 'lucide-react';
+
+// Importar componentes dos planos de leitura
+import PlanosLeitura from './components/PlanosLeitura';
+import ChecklistLeitura from './components/ChecklistLeitura';
+import ProgressoLeitura from './components/ProgressoLeitura';
 
 
 // =====================================================
@@ -151,6 +156,13 @@ export default function BibliaAveMariaApp() {
   const [velocidade, setVelocidade] = useState(1.0);
   const [delaySync, setDelaySync] = useState(0);
   
+  // Estado para controlar se o capítulo atual está marcado como lido
+  const [capituloLido, setCapituloLido] = useState(false);
+  const [mensagem, setMensagem] = useState('');
+  
+  // Estado para o plano ativo do usuário
+  const [planoAtivo, setPlanoAtivo] = useState(null);
+  
   // Admin states
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processando, setProcessando] = useState(false);
@@ -245,7 +257,16 @@ const handleLogin = async (email, senha) => {
     setIsAdmin(isAdminUser);
     await carregarLivros();
     
-    // 3. Redirecionar com base no nível de acesso
+    // 3. Carregar plano ativo do usuário
+    try {
+      const planosService = await import('./services/planosLeituraService');
+      const plano = await planosService.obterPlanoAtivo(usuarioData.email);
+      setPlanoAtivo(plano);
+    } catch (error) {
+      console.error('Erro ao carregar plano ativo:', error);
+    }
+    
+    // 4. Redirecionar com base no nível de acesso
     if (isAdminUser) {
       setTela('menu'); // Tela de administração
     } else {
@@ -263,6 +284,7 @@ const handleLogin = async (email, senha) => {
   const handleLogout = () => {
     setUsuario(null);
     setIsAdmin(false);
+    setPlanoAtivo(null);
     setTela('login');
   };
 
@@ -453,7 +475,6 @@ const handleLogin = async (email, senha) => {
     setVelocidade(novaVelocidade);
     if (audioRef.current) {
       audioRef.current.playbackRate = novaVelocidade;
-      console.log('Velocidade alterada para:', novaVelocidade, 'playbackRate atual:', audioRef.current.playbackRate);
     }
   };
 
@@ -463,6 +484,230 @@ const handleLogin = async (email, senha) => {
     const secs = Math.floor(seconds % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
+
+  // =====================================================
+  // FUNÇÕES PARA MARCAR CAPÍTULO COMO LIDO
+  // =====================================================
+  
+  // Função para marcar capítulo como lido no player
+  const handleMarcarCapituloLidoPlayer = async () => {
+    if (!capituloAtual || !usuario || !planoAtivo) {
+      setErro('É necessário ter um plano ativo para marcar capítulos como lidos.');
+      setTimeout(() => setErro(''), 3000);
+      return;
+    }
+    
+    try {
+      setCarregando(true);
+      
+      // Importar o serviço dinamicamente se necessário
+      const planosService = await import('./services/planosLeituraService');
+      
+      if (!capituloLido) {
+        // Marcar como lido
+        await planosService.marcarCapituloLido(
+          planoAtivo.id, // Usando o ID do plano ativo
+          capituloAtual.livro_id,
+          capituloAtual.numero,
+          true
+        );
+        setMensagem('✅ Capítulo marcado como lido!');
+      } else {
+        // Desmarcar
+        await planosService.desmarcarCapituloLido(
+          planoAtivo.id, // Usando o ID do plano ativo
+          capituloAtual.livro_id,
+          capituloAtual.numero
+        );
+        setMensagem('📖 Capítulo desmarcado.');
+      }
+      
+      // Verificar o status real do capítulo após a operação
+      await verificarCapituloLido();
+      
+      // Limpar mensagem após 3 segundos
+      setTimeout(() => setMensagem(''), 3000);
+      
+    } catch (error) {
+      console.error('Erro ao marcar capítulo:', error);
+      setErro('Erro ao marcar capítulo como lido.');
+      setTimeout(() => setErro(''), 3000);
+    } finally {
+      setCarregando(false);
+    }
+  };
+
+  // Função para verificar se o capítulo atual está lido
+  const verificarCapituloLido = async () => {
+    if (!capituloAtual || !usuario || !planoAtivo) return;
+    
+    try {
+      const planosService = await import('./services/planosLeituraService');
+      const capitulosLidos = await planosService.obterCapitulosLidos(planoAtivo.id);
+      
+      // Procurar o capítulo atual nos capítulos lidos
+      const capituloLido = capitulosLidos.find(cap => 
+        cap.livro_id === capituloAtual.livro_id && 
+        cap.capitulo_numero === capituloAtual.numero &&
+        cap.lido === true
+      );
+      
+      setCapituloLido(!!capituloLido);
+    } catch (error) {
+      console.error('Erro ao verificar status do capítulo:', error);
+    }
+  };
+
+  // Verificar status do capítulo quando ele mudar
+  useEffect(() => {
+    if (capituloAtual && usuario && planoAtivo && tela === 'player') {
+      verificarCapituloLido();
+    }
+  }, [capituloAtual, usuario, planoAtivo, tela]);
+
+  // Função para navegar para o capítulo anterior
+  const handleCapituloAnterior = async () => {
+    if (!capituloAtual || !livroSelecionado) return;
+    
+    try {
+      setCarregando(true);
+      
+      // Encontrar o capítulo anterior no livro atual
+      const capituloAtualIndex = capitulos.findIndex(cap => cap.id === capituloAtual.id);
+      
+      if (capituloAtualIndex > 0) {
+        // Há capítulo anterior no mesmo livro
+        const capituloAnterior = capitulos[capituloAtualIndex - 1];
+        await carregarCapitulo(capituloAnterior.id);
+        setMensagem(`📖 Navegando para Capítulo ${capituloAnterior.numero}`);
+      } else {
+        // Primeiro capítulo do livro, tentar ir para o livro anterior
+        const livroAtualIndex = livros.findIndex(l => l.id === livroSelecionado.id);
+        
+        if (livroAtualIndex > 0) {
+          const livroAnterior = livros[livroAtualIndex - 1];
+          setLivroSelecionado(livroAnterior);
+          
+          // Carregar capítulos do livro anterior
+          await carregarCapitulos(livroAnterior.id);
+          
+          // Aguardar um pouco para garantir que os capítulos foram carregados
+          setTimeout(async () => {
+            // Carregar o último capítulo do livro anterior
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/capitulos?livro_id=eq.${livroAnterior.id}&select=*,livros(nome)&order=numero.desc&limit=1`, {
+              headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+              }
+            });
+            
+            if (response.ok) {
+              const [ultimoCapitulo] = await response.json();
+              if (ultimoCapitulo) {
+                await carregarCapitulo(ultimoCapitulo.id);
+                setMensagem(`📖 Navegando para ${livroAnterior.nome} - Capítulo ${ultimoCapitulo.numero}`);
+              }
+            }
+          }, 500);
+        } else {
+          // Primeiro capítulo da Bíblia
+          setMensagem('📖 Você já está no início da Bíblia!');
+        }
+      }
+      
+      // Limpar mensagem após 3 segundos
+      setTimeout(() => setMensagem(''), 3000);
+      
+    } catch (error) {
+      console.error('Erro ao navegar para capítulo anterior:', error);
+      setErro('Erro ao navegar para o capítulo anterior.');
+      setTimeout(() => setErro(''), 3000);
+    } finally {
+      setCarregando(false);
+    }
+  };
+
+  // Função para navegar para o próximo capítulo
+  const handleProximoCapitulo = async () => {
+    if (!capituloAtual || !livroSelecionado) return;
+    
+    try {
+      setCarregando(true);
+      
+      // Encontrar o próximo capítulo no livro atual
+      const capituloAtualIndex = capitulos.findIndex(cap => cap.id === capituloAtual.id);
+      
+      if (capituloAtualIndex < capitulos.length - 1) {
+        // Há próximo capítulo no mesmo livro
+        const proximoCapitulo = capitulos[capituloAtualIndex + 1];
+        await carregarCapitulo(proximoCapitulo.id);
+        setMensagem(`📖 Navegando para Capítulo ${proximoCapitulo.numero}`);
+      } else {
+        // Último capítulo do livro, tentar ir para o próximo livro
+        const livroAtualIndex = livros.findIndex(l => l.id === livroSelecionado.id);
+        
+        if (livroAtualIndex < livros.length - 1) {
+          const proximoLivro = livros[livroAtualIndex + 1];
+          setLivroSelecionado(proximoLivro);
+          
+          // Carregar capítulos do próximo livro
+          await carregarCapitulos(proximoLivro.id);
+          
+          // Aguardar um pouco para garantir que os capítulos foram carregados
+          setTimeout(async () => {
+            // Carregar o primeiro capítulo do próximo livro
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/capitulos?livro_id=eq.${proximoLivro.id}&numero=eq.1&select=*,livros(nome)`, {
+              headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+              }
+            });
+            
+            if (response.ok) {
+              const [primeiroCapitulo] = await response.json();
+              if (primeiroCapitulo) {
+                await carregarCapitulo(primeiroCapitulo.id);
+                setMensagem(`📖 Navegando para ${proximoLivro.nome} - Capítulo 1`);
+              }
+            }
+          }, 500);
+        } else {
+          // Último capítulo da Bíblia
+          setMensagem('🎉 Parabéns! Você chegou ao final da Bíblia!');
+        }
+      }
+      
+      // Limpar mensagem após 3 segundos
+      setTimeout(() => setMensagem(''), 3000);
+      
+    } catch (error) {
+      console.error('Erro ao navegar para próximo capítulo:', error);
+      setErro('Erro ao navegar para o próximo capítulo.');
+      setTimeout(() => setErro(''), 3000);
+    } finally {
+      setCarregando(false);
+    }
+  };
+
+  // Carregar plano ativo quando necessário
+  useEffect(() => {
+    const carregarPlanoAtivo = async () => {
+      if (usuario && !planoAtivo) {
+        try {
+          const planosService = await import('./services/planosLeituraService');
+          const plano = await planosService.obterPlanoAtivo(usuario.email);
+          if (plano) {
+            setPlanoAtivo(plano);
+            console.log('Plano ativo carregado:', plano);
+          }
+        } catch (error) {
+          console.error('Erro ao carregar plano ativo:', error);
+        }
+      }
+    };
+
+    carregarPlanoAtivo();
+  }, [usuario, planoAtivo]);
 
   // =====================================================
   // FUNÇÕES ADMINISTRATIVAS
@@ -1239,6 +1484,15 @@ const handleLogin = async (email, senha) => {
             </button>
           )}
 
+          {/* Botão para Planos de Leitura */}
+          <button
+            onClick={() => setTela('planos-leitura')}
+            className="w-full mb-4 bg-blue-100 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-200 flex items-center justify-center gap-2"
+          >
+            <Book className="w-4 h-4" />
+            Planos de Leitura
+          </button>
+
           <div className="space-y-6">
             {livros.filter(l => l.testamento === 'AT').length > 0 && (
               <>
@@ -1547,11 +1801,111 @@ const handleLogin = async (email, senha) => {
                 <div className="mt-4 text-center text-xs text-amber-600">
                   <p>Velocidade: {velocidade}x | {capituloAtual.audio_tamanho_bytes ? `${(capituloAtual.audio_tamanho_bytes / 1024 / 1024).toFixed(1)} MB` : ''}</p>
                 </div>
+                
+                {/* Botões de ação */}
+                <div className="mt-6 flex flex-col gap-3">
+                  {/* Botão para marcar como lido */}
+                  <button
+                    onClick={handleMarcarCapituloLidoPlayer}
+                    disabled={carregando}
+                    className={`px-6 py-3 rounded-lg font-semibold text-white transition-all duration-200 ${
+                      capituloLido
+                        ? 'bg-green-600 hover:bg-green-700 shadow-lg'
+                        : 'bg-blue-600 hover:bg-blue-700 shadow-lg'
+                    } ${carregando ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
+                  >
+                    {carregando ? (
+                      <span className="flex items-center gap-2 justify-center">
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Processando...
+                      </span>
+                    ) : capituloLido ? (
+                      <span className="flex items-center gap-2 justify-center">
+                        ✅ Capítulo Lido
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2 justify-center">
+                        📖 Marcar como Lido
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Botões de navegação */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleCapituloAnterior}
+                      disabled={carregando}
+                      className={`flex-1 px-3 py-2 rounded-lg font-medium text-white text-sm transition-all duration-200 bg-amber-600 hover:bg-amber-700 shadow-md ${
+                        carregando ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
+                      }`}
+                    >
+                      <span className="flex items-center gap-1 justify-center">
+                        ⏮️ Anterior
+                      </span>
+                    </button>
+                    
+                    <button
+                      onClick={handleProximoCapitulo}
+                      disabled={carregando}
+                      className={`flex-1 px-3 py-2 rounded-lg font-medium text-white text-sm transition-all duration-200 bg-amber-600 hover:bg-amber-700 shadow-md ${
+                        carregando ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
+                      }`}
+                    >
+                      <span className="flex items-center gap-1 justify-center">
+                        ⏭️ Próximo
+                      </span>
+                    </button>
+                  </div>
+                  
+                  {/* Mensagem de feedback */}
+                  {mensagem && (
+                    <div className="mt-3 p-2 bg-green-100 border border-green-300 rounded-lg text-green-800 text-sm">
+                      {mensagem}
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>
         </div>
       </div>
+    );
+  }
+
+  // Tela de Planos de Leitura
+  if (tela === 'planos-leitura') {
+    return (
+      <PlanosLeitura 
+        usuario={usuario}
+        livros={livros}
+        onVoltar={() => setTela('livros')}
+        onCarregarCapitulos={carregarCapitulos}
+        onNavigateToChecklist={() => setTela('checklist-leitura')}
+        onNavigateToProgress={() => setTela('progresso-leitura')}
+      />
+    );
+  }
+
+  // Tela de Checklist de Leitura
+  if (tela === 'checklist-leitura') {
+    return (
+      <ChecklistLeitura 
+        usuario={usuario}
+        planoAtivo={planoAtivo}
+        livros={livros}
+        onVoltar={() => setTela('planos-leitura')}
+      />
+    );
+  }
+
+  // Tela de Progresso de Leitura
+  if (tela === 'progresso-leitura') {
+    return (
+      <ProgressoLeitura 
+        usuario={usuario}
+        planoAtivo={planoAtivo}
+        onVoltar={() => setTela('planos-leitura')}
+      />
     );
   }
 
