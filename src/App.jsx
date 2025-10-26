@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, SkipBack, SkipForward, Book, ChevronLeft, Volume2, Settings, Upload, Lock, LogOut, User } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
+
 
 // =====================================================
 // CONFIGURAÇÃO DO SUPABASE (usando fetch direto)
@@ -149,6 +149,7 @@ export default function BibliaAveMariaApp() {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState(null);
   const [velocidade, setVelocidade] = useState(1.0);
+  const [delaySync, setDelaySync] = useState(0);
   
   // Admin states
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -157,34 +158,107 @@ export default function BibliaAveMariaApp() {
   const audioRef = useRef(null);
   const versiculosContainerRef = useRef(null);
 
-  // =====================================================
-  // AUTENTICAÇÃO SIMPLES
-  // =====================================================
-  const handleLogin = async (email, senha) => {
-    setErro(null);
-    setCarregando(true);
+// =====================================================
+// AUTENTICAÇÃO COM TABELA DE USUÁRIOS (SUPABASE)
+// =====================================================
+const handleLogin = async (email, senha) => {
+  setErro(null);
+  setCarregando(true);
+  
+  try {
+    // 1. Buscar o usuário na tabela 'usuarios_app'
+    // ATENÇÃO: A busca por senha em texto simples é insegura.
+    // Em produção, use a autenticação nativa do Supabase (auth.signInWithPassword)
+    // ou uma coluna de hash de senha (ex: bcrypt) no seu backend.
+    // O objeto 'supabase' customizado só suporta um '.eq()', então vamos usar o filtro
+    // de URL diretamente, que o .eq() deve estar gerando nos bastidores.
+    // No entanto, como o .eq() customizado só aceita um par, vamos usar a função execute
+    // para buscar todos os usuários com o email e depois filtrar a senha localmente
+    // ou modificar a implementação do .eq() para aceitar mais de um filtro.
     
-    try {
-      if (email === 'admin@biblia.com' && senha === 'spider123') {
-        setUsuario({ email, nome: 'Administrador' });
-        setIsAdmin(true);
-        await carregarLivros();
-        setTela('menu');
-      } else if (email && senha) {
-        setUsuario({ email, nome: 'Usuário' });
-        setIsAdmin(false);
-        await carregarLivros();
-        setTela('livros');
-      } else {
-        setErro('Credenciais inválidas');
-      }
-    } catch (error) {
-      console.error('Erro no login:', error);
-      setErro('Erro ao fazer login. Verifique suas credenciais do Supabase.');
-    } finally {
-      setCarregando(false);
+    // Opção 1: Modificar a chamada para usar o filtro de URL diretamente,
+    // se o objeto 'supabase' customizado suportar a sintaxe de filtro de URL.
+    // Pela implementação, o .eq() customizado só aceita um par de coluna/valor.
+    
+    // Opção 2: Usar a chamada `fetch` diretamente para construir a URL com múltiplos filtros.
+    // A implementação customizada do `supabase` não permite múltiplos `.eq()`.
+    // Vamos usar a função `execute` com um filtro, e adicionar o segundo filtro manualmente na URL.
+    
+    // Revertendo para a busca por email e filtrando a senha localmente,
+    // ou, melhor, ajustando para usar a sintaxe de filtro de URL que o Supabase REST API suporta.
+    
+    // A implementação customizada do `supabase` é muito limitada.
+    // O método `select` não retorna um objeto que permita encadear múltiplos `.eq()`.
+    // A única forma de resolver isso sem reescrever todo o objeto `supabase` customizado
+    // é buscar por um filtro e depois filtrar localmente, ou usar a sintaxe de filtro de URL
+    // diretamente na chamada `fetch` (que é o que o objeto customizado faz).
+    
+    // Vamos tentar buscar por email e senha, mas usando a implementação customizada
+    // que só permite um filtro. O erro é na segunda chamada `.eq()`.
+    // A implementação do `supabase` customizado é:
+    // .eq(column, value) => ({ order, single })
+    // O objeto retornado não tem `.eq()` novamente.
+    
+    // A solução mais limpa é buscar por email e depois verificar a senha localmente.
+    // Isso é menos eficiente, mas funciona com a implementação customizada limitada.
+    // Alternativamente, podemos usar a função `execute` e construir a URL manualmente
+    // para incluir os dois filtros, mas a função `execute` customizada não é exposta
+    // diretamente após o `.eq()` sem `.order()`.
+    
+    // Vamos usar a função `single` no email, e depois verificar a senha.
+    const { data: usuarioData, error: usuarioError } = await supabase
+      .from('usuarios_app')
+      .select('*')
+      .eq('email', email)
+      .single();
+      
+    if (usuarioError || !usuarioData || usuarioData.senha !== senha) {
+      setErro('Credenciais inválidas ou usuário não encontrado.');
+      return;
     }
-  };
+    // Se a senha for verificada localmente, o restante do código é o mesmo.
+    
+    // O código original era:
+    /*
+    const { data: usuarioData, error: usuarioError } = await supabase
+      .from('usuarios_app')
+      .select('*')
+      .eq('email', email)
+      .eq('senha', senha) 
+      .single();
+      
+    if (usuarioError || !usuarioData) {
+      setErro('Credenciais inválidas ou usuário não encontrado.');
+      return;
+    }
+    */
+      
+    if (usuarioError || !usuarioData) {
+      setErro('Credenciais inválidas ou usuário não encontrado.');
+      return;
+    }
+    
+    // 2. Definir o estado do usuário e o nível de acesso
+    const isAdminUser = usuarioData.role === 'admin';
+    
+    setUsuario({ email: usuarioData.email, nome: usuarioData.nome || 'Usuário' });
+    setIsAdmin(isAdminUser);
+    await carregarLivros();
+    
+    // 3. Redirecionar com base no nível de acesso
+    if (isAdminUser) {
+      setTela('menu'); // Tela de administração
+    } else {
+      setTela('livros'); // Tela padrão para usuários
+    }
+    
+  } catch (error) {
+    console.error('Erro no login:', error);
+    setErro('Erro ao fazer login. Verifique suas credenciais e conexão com o Supabase.');
+  } finally {
+    setCarregando(false);
+  }
+};
 
   const handleLogout = () => {
     setUsuario(null);
@@ -193,11 +267,14 @@ export default function BibliaAveMariaApp() {
   };
 
   // =====================================================
-  // SINCRONIZAÇÃO MELHORADA COM AUTO-SCROLL
+  // SINCRONIZAÇÃO MELHORADA COM AUTO-SCROLL E DELAY
   // =====================================================
   useEffect(() => {
     if (versiculos.length > 0 && duracao > 0 && tocando) {
       const comTimestamps = versiculos.some(v => v.tempo_inicio !== null && v.tempo_inicio !== undefined);
+      
+      // Aplicar delay de sincronização
+      const tempoAjustado = tempoAtual + delaySync;
       
       let novoIndice = versiculoAtivo;
       
@@ -207,15 +284,15 @@ export default function BibliaAveMariaApp() {
           const inicio = parseFloat(versiculos[i].tempo_inicio) || 0;
           const proximoInicio = i < versiculos.length - 1 ? parseFloat(versiculos[i + 1].tempo_inicio) : duracao;
           
-          // Verifica se o tempo atual está dentro do intervalo do versículo
-          if (tempoAtual >= inicio && tempoAtual < proximoInicio) {
+          // Verifica se o tempo ajustado está dentro do intervalo do versículo
+          if (tempoAjustado >= inicio && tempoAjustado < proximoInicio) {
             novoIndice = i;
             break;
           }
         }
       } else {
         // Distribuição proporcional
-        const porcentagem = tempoAtual / duracao;
+        const porcentagem = tempoAjustado / duracao;
         novoIndice = Math.floor(porcentagem * versiculos.length);
         if (novoIndice >= versiculos.length) {
           novoIndice = versiculos.length - 1;
@@ -243,7 +320,7 @@ export default function BibliaAveMariaApp() {
         }, 50);
       }
     }
-  }, [tempoAtual, versiculos, duracao, tocando]);
+  }, [tempoAtual, versiculos, duracao, tocando, delaySync]);
 
   // =====================================================
   // FUNÇÕES DE BUSCA NO SUPABASE
@@ -537,7 +614,14 @@ export default function BibliaAveMariaApp() {
   };
 
   const calcularTimestampsAutomaticos = async (capituloId) => {
-    if (!window.confirm('Isso vai calcular os timestamps automaticamente. Deseja continuar?')) {
+    const opcao = prompt(
+      'Escolha o método de sincronização:\n\n' +
+      '1 - Divisão uniforme (todos versículos com mesmo tempo)\n' +
+      '2 - Proporcional ao tamanho do texto (mais preciso)\n\n' +
+      'Digite 1 ou 2:'
+    );
+    
+    if (!opcao || (opcao !== '1' && opcao !== '2')) {
       return;
     }
     
@@ -558,8 +642,8 @@ export default function BibliaAveMariaApp() {
       
       const cap = await capRes.json();
 
-      // Buscar versículos
-      const versRes = await fetch(`${SUPABASE_URL}/rest/v1/versiculos?select=id,numero&capitulo_id=eq.${capituloId}&order=numero`, {
+      // Buscar versículos com texto
+      const versRes = await fetch(`${SUPABASE_URL}/rest/v1/versiculos?select=id,numero,texto&capitulo_id=eq.${capituloId}&order=numero`, {
         headers: {
           'apikey': SUPABASE_KEY,
           'Authorization': `Bearer ${SUPABASE_KEY}`
@@ -581,19 +665,46 @@ export default function BibliaAveMariaApp() {
       if (!duracaoTotal || duracaoTotal <= 0) {
         throw new Error('Duração do áudio inválida. Faça upload do áudio primeiro.');
       }
+
+      let tempos = [];
       
-      const tempoPorVersiculo = duracaoTotal / vers.length;
-
-      console.log(`Calculando timestamps: ${vers.length} versículos, ${duracaoTotal}s total, ${tempoPorVersiculo.toFixed(2)}s por versículo`);
-
-      // Atualizar timestamps - um por vez para garantir que salve
-      let sucessos = 0;
-      for (let i = 0; i < vers.length; i++) {
-        const v = vers[i];
-        const tempoInicio = (tempoPorVersiculo * i);
-        const tempoFim = (tempoPorVersiculo * (i + 1));
+      if (opcao === '1') {
+        // Método 1: Divisão uniforme
+        const tempoPorVersiculo = duracaoTotal / vers.length;
+        tempos = vers.map((v, i) => ({
+          id: v.id,
+          numero: v.numero,
+          inicio: tempoPorVersiculo * i,
+          fim: tempoPorVersiculo * (i + 1)
+        }));
+        console.log('Método: Divisão uniforme -', tempoPorVersiculo.toFixed(2), 's por versículo');
+      } else {
+        // Método 2: Proporcional ao tamanho do texto
+        const tamanhos = vers.map(v => v.texto?.length || 50);
+        const tamanhoTotal = tamanhos.reduce((a, b) => a + b, 0);
         
-        const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/versiculos?id=eq.${v.id}`, {
+        let tempoAcumulado = 0;
+        tempos = vers.map((v, i) => {
+          const proporcao = tamanhos[i] / tamanhoTotal;
+          const duracaoVers = duracaoTotal * proporcao;
+          const inicio = tempoAcumulado;
+          const fim = tempoAcumulado + duracaoVers;
+          tempoAcumulado = fim;
+          
+          return {
+            id: v.id,
+            numero: v.numero,
+            inicio: inicio,
+            fim: fim
+          };
+        });
+        console.log('Método: Proporcional ao texto - baseado em', tamanhoTotal, 'caracteres');
+      }
+
+      // Atualizar timestamps
+      let sucessos = 0;
+      for (const t of tempos) {
+        const updateRes = await fetch(`${SUPABASE_URL}/rest/v1/versiculos?id=eq.${t.id}`, {
           method: 'PATCH',
           headers: {
             'apikey': SUPABASE_KEY,
@@ -602,22 +713,22 @@ export default function BibliaAveMariaApp() {
             'Prefer': 'return=representation'
           },
           body: JSON.stringify({
-            tempo_inicio: parseFloat(tempoInicio.toFixed(2)),
-            tempo_fim: parseFloat(tempoFim.toFixed(2))
+            tempo_inicio: parseFloat(t.inicio.toFixed(2)),
+            tempo_fim: parseFloat(t.fim.toFixed(2))
           })
         });
         
         if (updateRes.ok) {
           sucessos++;
-          console.log(`Versículo ${v.numero}: ${tempoInicio.toFixed(2)}s - ${tempoFim.toFixed(2)}s ✓`);
+          console.log(`Versículo ${t.numero}: ${t.inicio.toFixed(2)}s - ${t.fim.toFixed(2)}s (${(t.fim - t.inicio).toFixed(1)}s) ✓`);
         } else {
           const error = await updateRes.text();
-          console.error(`Erro ao atualizar versículo ${v.numero}:`, error);
+          console.error(`Erro ao atualizar versículo ${t.numero}:`, error);
         }
       }
 
       if (sucessos === vers.length) {
-        alert(`✅ Timestamps calculados com sucesso!\n\n${sucessos} versículos atualizados\nCada versículo tem ~${tempoPorVersiculo.toFixed(1)} segundos`);
+        alert(`✅ Timestamps calculados com sucesso!\n\n${sucessos} versículos atualizados\nMétodo: ${opcao === '1' ? 'Uniforme' : 'Proporcional ao texto'}\n\n⚠️ IMPORTANTE:\nSe a sincronização não ficou perfeita, você precisará ajustar manualmente os timestamps no banco de dados, ouvindo o áudio e anotando os tempos exatos.`);
       } else {
         alert(`⚠️ Parcialmente concluído: ${sucessos}/${vers.length} versículos atualizados.\n\nVerifique o console para mais detalhes.`);
       }
@@ -682,13 +793,7 @@ export default function BibliaAveMariaApp() {
                 {carregando ? 'Entrando...' : 'Entrar'}
               </button>
             </div>
-          </form>
-
-          <div className="mt-6 p-4 bg-amber-50 rounded-lg text-sm">
-            <p className="font-semibold text-amber-900 mb-2">🔑 Credenciais de teste:</p>
-            <p className="text-amber-700">Admin: admin@biblia.com / admin123</p>
-            <p className="text-amber-700">Usuário: qualquer email e senha</p>
-          </div>
+          </form>         
 
           {erro && (
             <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
@@ -781,7 +886,7 @@ export default function BibliaAveMariaApp() {
             <div className="text-center text-amber-700">Carregando...</div>
           ) : (
             <div className="space-y-6">
-              {livros.slice(0, 3).map(livro => (
+              {livros.map(livro => (
                 <div key={livro.id} className="bg-white rounded-xl shadow-lg p-6">
                   <h2 className="text-xl font-bold text-amber-900 mb-4">{livro.nome}</h2>
                   
@@ -801,7 +906,7 @@ export default function BibliaAveMariaApp() {
 
                   {livroSelecionado?.id === livro.id && capitulos.length > 0 && (
                     <div className="mt-4 grid gap-3">
-                      {capitulos.slice(0, 5).map(cap => (
+                      {capitulos.map(cap => (
                         <div key={cap.id} className="border border-gray-200 rounded-lg p-4">
                           <div className="flex justify-between items-center mb-2">
                             <span className="font-semibold">Capítulo {cap.numero}</span>
@@ -1031,18 +1136,28 @@ export default function BibliaAveMariaApp() {
           </button>
 
           <div className="bg-white rounded-t-2xl p-6 shadow-lg border-b border-amber-100">
-            <div className="flex justify-between items-center">
-              <h1 className="text-2xl font-bold text-amber-900">
+            <div className="mb-4">
+              <h1 className="text-2xl font-bold text-amber-900 mb-2">
                 {livroNome} - Capítulo {capituloAtual.numero}
               </h1>
               
-              {capituloAtual.audio_url && (
+              {versiculos.length > 0 && (
+                <p className="text-sm text-amber-600">
+                  {versiculos.length} versículos
+                </p>
+              )}
+            </div>
+            
+            {capituloAtual.audio_url && (
+              <div className="flex flex-wrap gap-4 items-center bg-amber-50 p-4 rounded-lg border border-amber-200">
+                {/* Controle de velocidade */}
                 <div className="flex items-center gap-2">
                   <Settings className="w-5 h-5 text-amber-600" />
+                  <label className="text-xs font-semibold text-amber-700">Velocidade:</label>
                   <select
                     value={velocidade}
                     onChange={(e) => handleVelocidade(parseFloat(e.target.value))}
-                    className="bg-amber-50 border border-amber-200 rounded px-2 py-1 text-sm text-amber-900"
+                    className="bg-white border border-amber-300 rounded px-2 py-1 text-sm text-amber-900"
                   >
                     <option value="0.75">0.75x</option>
                     <option value="1.0">1.0x</option>
@@ -1051,13 +1166,44 @@ export default function BibliaAveMariaApp() {
                     <option value="2.0">2.0x</option>
                   </select>
                 </div>
-              )}
-            </div>
+
+                {/* Controle de delay de sincronização */}
+                <div className="flex items-center gap-2 flex-1">
+                  <span className="text-xs font-semibold text-amber-700">Sincronização:</span>
+                  <button
+                    onClick={() => setDelaySync(d => Math.round((d - 0.5) * 10) / 10)}
+                    className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded font-bold text-sm"
+                    title="Atrasar legenda (clique se ela está adiantada)"
+                  >
+                    ← Atrasar
+                  </button>
+                  <span className="text-base font-mono font-bold text-amber-900 min-w-[4rem] text-center bg-white px-3 py-1 rounded border border-amber-300">
+                    {delaySync > 0 ? '+' : ''}{delaySync.toFixed(1)}s
+                  </span>
+                  <button
+                    onClick={() => setDelaySync(d => Math.round((d + 0.5) * 10) / 10)}
+                    className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-bold text-sm"
+                    title="Adiantar legenda (clique se ela está atrasada)"
+                  >
+                    Adiantar →
+                  </button>
+                  <button
+                    onClick={() => setDelaySync(0)}
+                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded font-bold text-sm"
+                    title="Resetar para sincronização original"
+                  >
+                    Reset
+                  </button>
+                </div>
+              </div>
+            )}
             
-            {versiculos.length > 0 && (
-              <p className="text-sm text-amber-600 mt-2">
-                {versiculos.length} versículos
-              </p>
+            {delaySync !== 0 && (
+              <div className="mt-2 text-xs text-center">
+                <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-semibold">
+                  💡 {delaySync > 0 ? 'Legenda adiantada' : 'Legenda atrasada'} em {Math.abs(delaySync)}s
+                </span>
+              </div>
             )}
           </div>
 
