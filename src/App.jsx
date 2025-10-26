@@ -453,6 +453,7 @@ const handleLogin = async (email, senha) => {
     setVelocidade(novaVelocidade);
     if (audioRef.current) {
       audioRef.current.playbackRate = novaVelocidade;
+      console.log('Velocidade alterada para:', novaVelocidade, 'playbackRate atual:', audioRef.current.playbackRate);
     }
   };
 
@@ -575,39 +576,261 @@ const handleLogin = async (email, senha) => {
     setProcessando(true);
 
     try {
+      console.log('Iniciando importação de versículos para capítulo:', capituloId);
+      
       const texto = await file.text();
       const linhas = texto.split('\n').filter(l => l.trim());
       
-      const versiculosParaInserir = linhas.map((linha) => {
-        const match = linha.match(/^(\d+)\.\s*(.+)$/);
+      console.log('Linhas encontradas no arquivo:', linhas.length);
+      console.log('Primeiras 5 linhas do arquivo:', linhas.slice(0, 5));
+      console.log('Últimas 5 linhas do arquivo:', linhas.slice(-5));
+      console.log('Todas as linhas do arquivo:', linhas);
+      
+      const versiculosParaInserir = linhas.map((linha, index) => {
+        // Limpar caracteres de quebra de linha (incluindo \r e \n)
+        const linhaLimpa = linha.replace(/[\r\n]+$/, '').trim();
+        
+        // Suporte para diferentes formatos:
+        // "1. Texto do versículo"
+        // "1 Texto do versículo" 
+        // "Versículo 1: Texto"
+        const match = linhaLimpa.match(/^(\d+)[\.\:\s]+(.+)$/) || linhaLimpa.match(/^Versículo\s+(\d+)[\:\s]+(.+)$/i);
         if (match) {
-          return {
-            capitulo_id: capituloId,
+          const versiculo = {
+            capitulo_id: parseInt(capituloId),
             numero: parseInt(match[1]),
             texto: match[2].trim(),
             tempo_inicio: null,
             tempo_fim: null
           };
+          console.log(`Processando linha ${index + 1}: "${linhaLimpa}" -> Versículo ${versiculo.numero}`);
+          return versiculo;
+        } else if (linhaLimpa.trim()) {
+          console.warn(`Linha ${index + 1} não reconhecida: "${linhaLimpa}"`);
         }
         return null;
       }).filter(v => v !== null);
 
-      await fetch(`${SUPABASE_URL}/rest/v1/versiculos`, {
+      console.log('Versículos processados:', versiculosParaInserir.length);
+      console.log('Detalhes dos versículos processados:', versiculosParaInserir);
+
+      if (versiculosParaInserir.length === 0) {
+        alert('❌ Nenhum versículo válido encontrado no arquivo.\n\nFormato esperado:\n1. Texto do versículo\n2. Outro versículo\n...');
+        return;
+      }
+
+      // Primeiro, verificar se já existem versículos para este capítulo
+      console.log('Verificando versículos existentes...');
+      console.log('URL da requisição:', `${SUPABASE_URL}/rest/v1/versiculos?select=numero&capitulo_id=eq.${capituloId}`);
+      console.log('Headers da requisição:', {
+        'apikey': SUPABASE_KEY ? 'Configurado' : 'NÃO CONFIGURADO',
+        'Authorization': SUPABASE_KEY ? 'Configurado' : 'NÃO CONFIGURADO'
+      });
+      
+      const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/versiculos?select=numero&capitulo_id=eq.${capituloId}`, {
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${SUPABASE_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('Status da resposta:', checkRes.status);
+      console.log('Headers da resposta:', Object.fromEntries(checkRes.headers.entries()));
+
+      if (checkRes.ok) {
+        const existentes = await checkRes.json();
+        console.log('Versículos existentes encontrados:', existentes.length);
+        
+        if (existentes.length > 0) {
+          const confirmar = window.confirm(`⚠️ Já existem ${existentes.length} versículos neste capítulo.\n\nDeseja substituí-los pelos novos versículos?`);
+          if (confirmar) {
+            console.log('Deletando versículos existentes...');
+            // Deletar versículos existentes
+            const deleteRes = await fetch(`${SUPABASE_URL}/rest/v1/versiculos?capitulo_id=eq.${capituloId}`, {
+              method: 'DELETE',
+              headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`,
+                'Content-Type': 'application/json',
+                'X-User-Email': usuario?.email || '',
+                'X-User-Role': isAdmin ? 'admin' : 'user'
+              }
+            });
+            
+            console.log('Status da deleção:', deleteRes.status);
+            
+            if (!deleteRes.ok) {
+              const errorText = await deleteRes.text();
+              console.error('Erro ao deletar versículos existentes:', errorText);
+              
+              // Se for erro de RLS, tentar com uma abordagem diferente
+              if (deleteRes.status === 403 || errorText.includes('RLS') || errorText.includes('policy')) {
+                console.log('Erro de RLS detectado. Tentando deleção individual...');
+                
+                // Buscar todos os IDs dos versículos para deletar individualmente
+                const versesToDeleteRes = await fetch(`${SUPABASE_URL}/rest/v1/versiculos?select=id&capitulo_id=eq.${capituloId}`, {
+                  headers: {
+                    'apikey': SUPABASE_KEY,
+                    'Authorization': `Bearer ${SUPABASE_KEY}`
+                  }
+                });
+                
+                if (versesToDeleteRes.ok) {
+                  const versesToDelete = await versesToDeleteRes.json();
+                  console.log(`Tentando deletar ${versesToDelete.length} versículos individualmente...`);
+                  
+                  let deletedCount = 0;
+                  for (const verse of versesToDelete) {
+                    const individualDeleteRes = await fetch(`${SUPABASE_URL}/rest/v1/versiculos?id=eq.${verse.id}`, {
+                      method: 'DELETE',
+                      headers: {
+                        'apikey': SUPABASE_KEY,
+                        'Authorization': `Bearer ${SUPABASE_KEY}`,
+                        'Content-Type': 'application/json',
+                        'X-User-Email': usuario?.email || '',
+                        'X-User-Role': isAdmin ? 'admin' : 'user'
+                      }
+                    });
+                    
+                    if (individualDeleteRes.ok) {
+                      deletedCount++;
+                    } else {
+                      console.error(`Erro ao deletar versículo ${verse.id}:`, await individualDeleteRes.text());
+                    }
+                  }
+                  
+                  console.log(`Deletados ${deletedCount} de ${versesToDelete.length} versículos`);
+                  
+                  if (deletedCount === 0) {
+                    throw new Error(`Não foi possível deletar nenhum versículo. Verifique as políticas RLS no Supabase.\n\nSugestão: Execute as políticas alternativas do arquivo supabase-rls-policies.sql`);
+                  }
+                } else {
+                  throw new Error(`Erro ao deletar versículos existentes: ${deleteRes.status} - ${errorText}\n\nSugestão: Verifique as políticas RLS no Supabase`);
+                }
+              } else {
+                throw new Error(`Erro ao deletar versículos existentes: ${deleteRes.status} - ${errorText}`);
+              }
+            }
+            
+            // Verificar se a deleção foi bem-sucedida
+            const verifyDeleteRes = await fetch(`${SUPABASE_URL}/rest/v1/versiculos?select=numero&capitulo_id=eq.${capituloId}`, {
+              headers: {
+                'apikey': SUPABASE_KEY,
+                'Authorization': `Bearer ${SUPABASE_KEY}`
+              }
+            });
+            
+            if (verifyDeleteRes.ok) {
+              const remainingVerses = await verifyDeleteRes.json();
+              if (remainingVerses.length > 0) {
+                console.error('Ainda existem versículos após deleção:', remainingVerses.length);
+                throw new Error(`Falha na deleção: ainda existem ${remainingVerses.length} versículos no capítulo`);
+              }
+            }
+            
+            console.log('Versículos existentes removidos com sucesso');
+          } else {
+            console.log('Usuário cancelou a substituição');
+            return;
+          }
+        }
+      } else {
+        const errorText = await checkRes.text().catch(() => 'Erro desconhecido');
+        console.error('Erro ao verificar versículos existentes:', {
+          status: checkRes.status,
+          statusText: checkRes.statusText,
+          error: errorText
+        });
+        
+        // Se for erro de rede (ERR_ABORTED), tentar continuar mesmo assim
+        if (checkRes.status === 0) {
+          console.warn('Erro de rede detectado. Continuando com a inserção...');
+        } else {
+          console.warn('Não foi possível verificar versículos existentes:', checkRes.status);
+          // Perguntar ao usuário se quer continuar mesmo assim
+          const continuar = window.confirm(`⚠️ Não foi possível verificar se já existem versículos neste capítulo (Erro ${checkRes.status}).\n\nDeseja continuar mesmo assim? Isso pode causar duplicatas.`);
+          if (!continuar) {
+            return;
+          }
+        }
+      }
+
+      // Inserir novos versículos
+      console.log('Inserindo versículos...');
+      console.log('Array de versículos para inserir:', JSON.stringify(versiculosParaInserir, null, 2));
+      
+      const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/versiculos`, {
         method: 'POST',
         headers: {
           'apikey': SUPABASE_KEY,
           'Authorization': `Bearer ${SUPABASE_KEY}`,
           'Content-Type': 'application/json',
-          'Prefer': 'return=minimal'
+          'Prefer': 'return=representation',
+          // Headers customizados para identificar o usuário admin
+          'X-User-Email': usuario?.email || '',
+          'X-User-Role': isAdmin ? 'admin' : 'user'
         },
         body: JSON.stringify(versiculosParaInserir)
       });
 
-      alert(`✅ ${versiculosParaInserir.length} versículos importados!`);
+      if (!insertRes.ok) {
+        const errorText = await insertRes.text();
+        let errorData = null;
+        
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          // Se não conseguir fazer parse, usar o texto como está
+        }
+        
+        console.error('Erro na inserção:', errorData || errorText);
+        
+        // Verificar se é erro de RLS
+        if (insertRes.status === 403 || errorText.includes('RLS') || errorText.includes('policy')) {
+          throw new Error('Erro de permissão (RLS). Verifique as políticas de segurança no Supabase para a tabela "versiculos".');
+        } else if (insertRes.status === 409 || (errorData && errorData.code === '23505')) {
+          // Erro de chave duplicada - isso não deveria acontecer se a deleção funcionou
+          console.error('Erro de chave duplicada detectado. Tentando verificar estado atual...');
+          
+          // Verificar novamente se existem versículos
+          const recheckRes = await fetch(`${SUPABASE_URL}/rest/v1/versiculos?select=numero&capitulo_id=eq.${capituloId}`, {
+            headers: {
+              'apikey': SUPABASE_KEY,
+              'Authorization': `Bearer ${SUPABASE_KEY}`
+            }
+          });
+          
+          if (recheckRes.ok) {
+            const stillExisting = await recheckRes.json();
+            if (stillExisting.length > 0) {
+              throw new Error(`Ainda existem ${stillExisting.length} versículos no capítulo. A deleção anterior pode não ter funcionado completamente. Tente novamente.`);
+            }
+          }
+          
+          throw new Error('Erro de chave duplicada inesperado. Verifique se não há conflitos de numeração nos versículos.');
+        } else {
+          throw new Error(`Erro HTTP ${insertRes.status}: ${errorData?.message || errorText}`);
+        }
+      }
+
+      const resultados = await insertRes.json();
+      console.log('Versículos inseridos com sucesso:', resultados);
+      console.log('Quantidade de versículos retornados:', resultados.length);
+      console.log('Detalhes dos versículos inseridos:', JSON.stringify(resultados, null, 2));
+
+      alert(`✅ ${versiculosParaInserir.length} versículos importados com sucesso!\n\nCapítulo: ${capituloId}\nVersículos: ${versiculosParaInserir[0]?.numero} - ${versiculosParaInserir[versiculosParaInserir.length - 1]?.numero}`);
       
     } catch (error) {
-      console.error('Erro ao importar:', error);
-      alert('❌ Erro ao importar versículos: ' + error.message);
+      console.error('Erro ao importar versículos:', error);
+      
+      let mensagemErro = 'Erro ao importar versículos: ' + error.message;
+      
+      if (error.message.includes('RLS') || error.message.includes('policy')) {
+        mensagemErro += '\n\n🔧 SOLUÇÃO:\n1. Acesse o painel do Supabase\n2. Vá em Authentication > Policies\n3. Verifique se existe uma política para INSERT na tabela "versiculos"\n4. Se não existir, crie uma política que permita INSERT para usuários autenticados';
+      }
+      
+      alert('❌ ' + mensagemErro);
     } finally {
       setProcessando(false);
     }
@@ -1155,15 +1378,15 @@ const handleLogin = async (email, senha) => {
                   <Settings className="w-5 h-5 text-amber-600" />
                   <label className="text-xs font-semibold text-amber-700">Velocidade:</label>
                   <select
-                    value={velocidade}
+                    value={velocidade.toString()}
                     onChange={(e) => handleVelocidade(parseFloat(e.target.value))}
                     className="bg-white border border-amber-300 rounded px-2 py-1 text-sm text-amber-900"
                   >
                     <option value="0.75">0.75x</option>
-                    <option value="1.0">1.0x</option>
+                    <option value="1">1.0x</option>
                     <option value="1.25">1.25x</option>
                     <option value="1.5">1.5x</option>
-                    <option value="2.0">2.0x</option>
+                    <option value="2">2.0x</option>
                   </select>
                 </div>
 
@@ -1254,6 +1477,11 @@ const handleLogin = async (email, senha) => {
                   onEnded={() => setTocando(false)}
                   onLoadedMetadata={(e) => {
                     e.target.playbackRate = velocidade;
+                    console.log('Áudio carregado, velocidade definida para:', velocidade);
+                  }}
+                  onCanPlay={(e) => {
+                    e.target.playbackRate = velocidade;
+                    console.log('Áudio pronto para reproduzir, velocidade definida para:', velocidade);
                   }}
                   onError={(e) => {
                     console.error('Erro no áudio:', e);
