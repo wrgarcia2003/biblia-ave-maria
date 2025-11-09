@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Book, ChevronLeft, ChevronDown, Volume2, Settings, Upload, Lock, LogOut, User, Calendar } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Book, ChevronLeft, ChevronDown, Settings, Upload, LogOut } from 'lucide-react';
 
 // Importar componentes dos planos de leitura
 import PlanosLeitura from './components/PlanosLeitura';
@@ -68,7 +68,7 @@ const supabase = {
           Object.entries(conditions).forEach(([key, val]) => {
             url += `${key}=eq.${val}&`;
           });
-          const res = await fetch(url, {
+          await fetch(url, {
             method: 'PATCH',
             headers: {
               'apikey': SUPABASE_KEY,
@@ -84,7 +84,7 @@ const supabase = {
       eq: (column, value) => ({
         async execute() {
           const url = `${SUPABASE_URL}/rest/v1/${table}?${column}=eq.${value}`;
-          const res = await fetch(url, {
+          await fetch(url, {
             method: 'PATCH',
             headers: {
               'apikey': SUPABASE_KEY,
@@ -100,7 +100,7 @@ const supabase = {
     }),
     async insert(values) {
       const url = `${SUPABASE_URL}/rest/v1/${table}`;
-      const res = await fetch(url, {
+      await fetch(url, {
         method: 'POST',
         headers: {
           'apikey': SUPABASE_KEY,
@@ -117,7 +117,7 @@ const supabase = {
     from: (bucket) => ({
       async upload(path, file, options) {
         const url = `${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`;
-        const res = await fetch(url, {
+        await fetch(url, {
           method: 'POST',
           headers: {
             'apikey': SUPABASE_KEY,
@@ -359,7 +359,7 @@ const handleLogin = async (email, senha) => {
         }, 50);
       }
     }
-  }, [tempoAtual, versiculos, duracao, tocando, delaySync]);
+  }, [tempoAtual, versiculos, duracao, tocando, delaySync, versiculoAtivo]);
 
   // =====================================================
   // FUNÇÕES DE BUSCA NO SUPABASE
@@ -569,32 +569,32 @@ const handleLogin = async (email, senha) => {
   };
 
   // Função para verificar se o capítulo atual está lido
-  const verificarCapituloLido = async () => {
+  const verificarCapituloLido = React.useCallback(async () => {
     if (!capituloAtual || !usuario || !planoAtivo) return;
-    
+
     try {
       const planosService = await import('./services/planosLeituraService');
       const capitulosLidos = await planosService.obterCapitulosLidos(planoAtivo.id);
-      
+
       // Procurar o capítulo atual nos capítulos lidos
-      const capituloLido = capitulosLidos.find(cap => 
-        cap.livro_id === capituloAtual.livro_id && 
+      const capituloLido = capitulosLidos.find(cap =>
+        cap.livro_id === capituloAtual.livro_id &&
         cap.capitulo_numero === capituloAtual.numero &&
         cap.lido === true
       );
-      
+
       setCapituloLido(!!capituloLido);
     } catch (error) {
       console.error('Erro ao verificar status do capítulo:', error);
     }
-  };
+  }, [capituloAtual, usuario, planoAtivo]);
 
   // Verificar status do capítulo quando ele mudar
   useEffect(() => {
     if (capituloAtual && usuario && planoAtivo && tela === 'player') {
       verificarCapituloLido();
     }
-  }, [capituloAtual, usuario, planoAtivo, tela]);
+  }, [capituloAtual, usuario, planoAtivo, tela, verificarCapituloLido]);
 
   // Função para navegar para o capítulo anterior
   const handleCapituloAnterior = async () => {
@@ -871,7 +871,7 @@ const handleLogin = async (email, senha) => {
         // "1. Texto do versículo"
         // "1 Texto do versículo" 
         // "Versículo 1: Texto"
-        const match = linhaLimpa.match(/^(\d+)[\.\:\s]+(.+)$/) || linhaLimpa.match(/^Versículo\s+(\d+)[\:\s]+(.+)$/i);
+        const match = linhaLimpa.match(/^(\d+)[.:\s]+(.+)$/) || linhaLimpa.match(/^Versículo\s+(\d+)[:\s]+(.+)$/i);
         if (match) {
           const versiculo = {
             capitulo_id: parseInt(capituloId),

@@ -23,42 +23,6 @@ const ChecklistLeitura = ({ usuario, planoAtivo, onVoltar, livros }) => {
   // EFEITOS E CARREGAMENTO
   // =====================================================
   
-  const carregarChecklist = useCallback(async () => {
-    if (!planoAtivo || !usuario?.email) return;
-    
-    setCarregando(true);
-    setErro(null);
-    
-    try {
-      // Carregar checklist completo e capítulos já lidos
-      const [checklist, lidos, stats] = await Promise.all([
-        planosService.obterChecklistCompleto(usuario.email),
-        planosService.obterCapitulosLidos(planoAtivo.id),
-        planosService.obterEstatisticasPlano(planoAtivo.id)
-      ]);
-      
-      setCapitulosChecklist(checklist);
-      setCapitulosLidos(new Set(lidos.map(cap => `${cap.livro_id}-${cap.capitulo}`)));
-      setEstatisticas(stats);
-      
-    } catch (error) {
-      console.error('Erro ao carregar checklist:', error);
-      setErro('Erro ao carregar checklist de leitura.');
-    } finally {
-      setCarregando(false);
-    }
-  }, [planoAtivo, usuario?.email]);
-
-  useEffect(() => {
-    carregarChecklist();
-  }, [carregarChecklist]);
-
-  useEffect(() => {
-    agruparCapitulos();
-  }, [agruparCapitulos]);
-
-  
-
   const agruparCapitulos = useCallback(() => {
     let capitulosFiltrados = [...capitulosChecklist];
     
@@ -106,6 +70,44 @@ const ChecklistLeitura = ({ usuario, planoAtivo, onVoltar, livros }) => {
     
     setAgrupadoPorLivro(agrupado);
   }, [capitulosChecklist, capitulosLidos, filtroLivro, filtroStatus, busca]);
+
+  const carregarChecklist = useCallback(async () => {
+    if (!planoAtivo || !usuario?.email) return;
+    
+    setCarregando(true);
+    setErro(null);
+    
+    try {
+      // Carregar checklist completo e capítulos já lidos
+      const [checklist, lidos, stats] = await Promise.all([
+        planosService.obterChecklistCompleto(usuario.email),
+        planosService.obterCapitulosLidos(planoAtivo.id),
+        planosService.obterEstatisticasPlano(planoAtivo.id)
+      ]);
+      
+      setCapitulosChecklist(checklist);
+      setCapitulosLidos(new Set(lidos.map(cap => `${cap.livro_id}-${cap.capitulo}`)));
+      setEstatisticas(stats);
+      
+    } catch (error) {
+      console.error('Erro ao carregar checklist:', error);
+      setErro('Erro ao carregar checklist de leitura.');
+    } finally {
+      setCarregando(false);
+    }
+  }, [planoAtivo, usuario?.email]);
+
+  useEffect(() => {
+    carregarChecklist();
+  }, [carregarChecklist]);
+
+  useEffect(() => {
+    agruparCapitulos();
+  }, [agruparCapitulos]);
+
+  
+
+  
 
   // =====================================================
   // FUNÇÕES DE INTERAÇÃO
