@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Book, ChevronLeft, Volume2, Settings, Upload, Lock, LogOut, User, Calendar } from 'lucide-react';
+import { Play, Pause, SkipBack, SkipForward, Book, ChevronLeft, ChevronDown, Volume2, Settings, Upload, Lock, LogOut, User, Calendar } from 'lucide-react';
 
 // Importar componentes dos planos de leitura
 import PlanosLeitura from './components/PlanosLeitura';
@@ -160,15 +160,32 @@ export default function BibliaAveMariaApp() {
   const [capituloLido, setCapituloLido] = useState(false);
   const [mensagem, setMensagem] = useState('');
   
+  // Estado de busca e acordeões para lista de livros (mobile-friendly)
+  const [filtroLivro, setFiltroLivro] = useState('');
+  const [mostrarAT, setMostrarAT] = useState(false);
+  const [mostrarNT, setMostrarNT] = useState(false);
+  
   // Estado para o plano ativo do usuário
   const [planoAtivo, setPlanoAtivo] = useState(null);
   
   // Admin states
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processando, setProcessando] = useState(false);
+  const [capituloFocado, setCapituloFocado] = useState(null);
   
   const audioRef = useRef(null);
   const versiculosContainerRef = useRef(null);
+  const capituloFocoRef = useRef(null);
+
+  useEffect(() => {
+    if (capituloFocado && capituloFocoRef.current) {
+      try {
+        capituloFocoRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (_) {
+        // Ignorar falhas de scroll em ambientes sem DOM
+      }
+    }
+  }, [capituloFocado]);
 
 // =====================================================
 // AUTENTICAÇÃO COM TABELA DE USUÁRIOS (SUPABASE)
@@ -423,6 +440,20 @@ const handleLogin = async (email, senha) => {
       setTocando(false);
       setTempoAtual(0);
       setVersiculoAtivo(0);
+
+      // Verificar acessibilidade do áudio (HEAD) para evitar erros silenciosos
+      if (capData[0]?.audio_url) {
+        try {
+          const headRes = await fetch(capData[0].audio_url, { method: 'HEAD' });
+          if (!headRes.ok) {
+            console.warn('Áudio não acessível no Storage:', headRes.status, headRes.statusText);
+            setErro('⚠️ Áudio não acessível no Storage. Verifique se o arquivo existe e se o bucket "audios-biblia" está público.');
+          }
+        } catch (headErr) {
+          console.error('Erro ao verificar acessibilidade do áudio:', headErr);
+          setErro('❌ Erro ao acessar o áudio. Verifique a URL e a configuração do Storage público.');
+        }
+      }
       
       if (!capData[0].audio_url) {
         setErro('⚠️ Este capítulo ainda não tem áudio disponível.');
@@ -819,6 +850,7 @@ const handleLogin = async (email, senha) => {
     if (!file) return;
 
     setProcessando(true);
+    setCapituloFocado(capituloId);
 
     try {
       console.log('Iniciando importação de versículos para capítulo:', capituloId);
@@ -1279,7 +1311,7 @@ const handleLogin = async (email, senha) => {
   if (tela === 'menu' && isAdmin) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50">
-        <div className="max-w-4xl mx-auto p-6">
+        <div className="max-w-4xl mx-auto p-6 pb-24 md:pb-0">
           <div className="flex justify-between items-center mb-8">
             <div>
               <h1 className="text-3xl font-bold text-amber-900">Painel Administrativo</h1>
@@ -1373,55 +1405,132 @@ const handleLogin = async (email, senha) => {
                   </button>
 
                   {livroSelecionado?.id === livro.id && capitulos.length > 0 && (
-                    <div className="mt-4 grid gap-3">
-                      {capitulos.map(cap => (
-                        <div key={cap.id} className="border border-gray-200 rounded-lg p-4">
-                          <div className="flex justify-between items-center mb-2">
-                            <span className="font-semibold">Capítulo {cap.numero}</span>
-                            <span className={`text-xs px-2 py-1 rounded ${cap.audio_url ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                              {cap.audio_url ? '✓ Áudio OK' : 'Sem áudio'}
-                            </span>
+                    <div className="mt-4">
+                      {capituloFocado ? (
+                        <div ref={capituloFocoRef}>
+                          <div className="flex items-center justify-between mb-3 sticky top-0 bg-white py-2 z-20 shadow-sm border-b">
+                            <div className="text-sm text-amber-800">
+                              {livro.nome} • Capítulo {capitulos.find(c => c.id === capituloFocado)?.numero}
+                            </div>
+                            <button
+                              onClick={() => {
+                                const alvo = capituloFocado;
+                                setCapituloFocado(null);
+                                setTimeout(() => {
+                                  try {
+                                    const el = document.getElementById(`cap-${alvo}`);
+                                    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  } catch (_) {}
+                                }, 0);
+                              }}
+                              className="px-3 py-1 rounded-lg bg-amber-100 text-amber-800 text-xs hover:bg-amber-200 shadow-sm"
+                            >
+                              Voltar
+                            </button>
                           </div>
-
-                          <div className="grid grid-cols-3 gap-2 mt-2">
-                            <label className="cursor-pointer">
-                              <div className="bg-blue-100 text-blue-700 px-3 py-2 rounded text-xs text-center hover:bg-blue-200">
-                                📁 Áudio
+                          {capitulos.filter(c => c.id === capituloFocado).map(cap => (
+                            <div key={cap.id} className="border border-gray-200 rounded-lg p-4">
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="font-semibold">Capítulo {cap.numero}</span>
+                                <span className={`text-xs px-2 py-1 rounded ${cap.audio_url ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                  {cap.audio_url ? '✓ Áudio OK' : 'Sem áudio'}
+                                </span>
                               </div>
-                              <input
-                                type="file"
-                                accept="audio/*"
-                                className="hidden"
-                                onChange={(e) => handleUploadAudio(e, livro.nome, cap.numero)}
-                                disabled={processando}
-                              />
-                            </label>
-
-                            <label className="cursor-pointer">
-                              <div className="bg-purple-100 text-purple-700 px-3 py-2 rounded text-xs text-center hover:bg-purple-200">
-                                📝 Texto
+                              <div className="grid grid-cols-3 gap-3 mt-2">
+                                <label className="cursor-pointer">
+                                  <div className="bg-blue-100 text-blue-700 px-4 py-3 rounded text-sm text-center hover:bg-blue-200 min-h-[44px] font-medium">
+                                    📁 Áudio
+                                  </div>
+                                  <input
+                                    type="file"
+                                    accept="audio/*"
+                                    className="hidden"
+                                    onChange={(e) => handleUploadAudio(e, livro.nome, cap.numero)}
+                                    disabled={processando}
+                                  />
+                                </label>
+                                <label className="cursor-pointer">
+                                  <div className="bg-purple-100 text-purple-700 px-4 py-3 rounded text-sm text-center hover:bg-purple-200 min-h-[44px] font-medium">
+                                    📝 Texto
+                                  </div>
+                                  <input
+                                    type="file"
+                                    accept=".txt"
+                                    className="hidden"
+                                    onChange={(e) => handleImportarVersiculos(e, cap.id)}
+                                    disabled={processando}
+                                  />
+                                </label>
+                                {cap.audio_url && (
+                                  <button
+                                    onClick={() => calcularTimestampsAutomaticos(cap.id)}
+                                    className="bg-green-100 text-green-700 px-4 py-3 rounded text-sm hover:bg-green-200 min-h-[44px] font-medium"
+                                    disabled={processando}
+                                  >
+                                    ⏱️ Sync
+                                  </button>
+                                )}
                               </div>
-                              <input
-                                type="file"
-                                accept=".txt"
-                                className="hidden"
-                                onChange={(e) => handleImportarVersiculos(e, cap.id)}
-                                disabled={processando}
-                              />
-                            </label>
-
-                            {cap.audio_url && (
-                              <button
-                                onClick={() => calcularTimestampsAutomaticos(cap.id)}
-                                className="bg-green-100 text-green-700 px-3 py-2 rounded text-xs hover:bg-green-200"
-                                disabled={processando}
-                              >
-                                ⏱️ Sync
-                              </button>
-                            )}
-                          </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      ) : (
+                        <div className="grid gap-3">
+                          {capitulos.map(cap => (
+                            <div key={cap.id} id={`cap-${cap.id}`} className="border border-gray-200 rounded-lg p-4">
+                              <div className="flex justify-between items-center mb-2">
+                                <span className="font-semibold">Capítulo {cap.numero}</span>
+                                <span className={`text-xs px-2 py-1 rounded ${cap.audio_url ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                                  {cap.audio_url ? '✓ Áudio OK' : 'Sem áudio'}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-3 gap-3 mt-2">
+                                <label className="cursor-pointer">
+                                  <div className="bg-blue-100 text-blue-700 px-4 py-3 rounded text-sm text-center hover:bg-blue-200 min-h-[44px] font-medium">
+                                    📁 Áudio
+                                  </div>
+                                  <input
+                                    type="file"
+                                    accept="audio/*"
+                                    className="hidden"
+                                    onChange={(e) => { setCapituloFocado(cap.id); handleUploadAudio(e, livro.nome, cap.numero); }}
+                                    disabled={processando}
+                                  />
+                                </label>
+                                <label className="cursor-pointer">
+                                  <div className="bg-purple-100 text-purple-700 px-4 py-3 rounded text-sm text-center hover:bg-purple-200 min-h-[44px] font-medium">
+                                    📝 Texto
+                                  </div>
+                                  <input
+                                    type="file"
+                                    accept=".txt"
+                                    className="hidden"
+                                    onChange={(e) => { setCapituloFocado(cap.id); handleImportarVersiculos(e, cap.id); }}
+                                    disabled={processando}
+                                  />
+                                </label>
+                                {cap.audio_url && (
+                                  <button
+                                    onClick={() => { setCapituloFocado(cap.id); calcularTimestampsAutomaticos(cap.id); }}
+                                    className="bg-green-100 text-green-700 px-4 py-3 rounded text-sm hover:bg-green-200 min-h-[44px] font-medium"
+                                    disabled={processando}
+                                  >
+                                    ⏱️ Sync
+                                  </button>
+                                )}
+                              </div>
+                              <div className="mt-2 text-right">
+                                <button
+                                  onClick={() => setCapituloFocado(cap.id)}
+                                  className="text-xs px-2 py-1 rounded bg-amber-50 text-amber-800 hover:bg-amber-100"
+                                >
+                                  Abrir
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1494,52 +1603,109 @@ const handleLogin = async (email, senha) => {
           </button>
 
           <div className="space-y-6">
+            {/* Busca por livro */}
+            <div className="sticky top-0 bg-amber-50 py-3 z-10">
+              <input
+                type="text"
+                value={filtroLivro}
+                onChange={(e) => setFiltroLivro(e.target.value)}
+                placeholder="Buscar livro..."
+                className="w-full px-4 py-2 rounded-lg border border-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white shadow-sm"
+              />
+            </div>
+
+            {/* Antigo Testamento */}
             {livros.filter(l => l.testamento === 'AT').length > 0 && (
-              <>
-                <h2 className="text-xl font-semibold text-amber-800">Antigo Testamento</h2>
-                <div className="space-y-3">
-                  {livros.filter(l => l.testamento === 'AT').map(livro => (
-                    <button
-                      key={livro.id}
-                      onClick={async () => {
-                        setLivroSelecionado(livro);
-                        await carregarCapitulos(livro.id);
-                        setTela('capitulos');
-                      }}
-                      className="w-full bg-white hover:bg-amber-50 p-4 rounded-xl shadow-sm border border-amber-100 transition-all hover:shadow-md text-left"
-                    >
-                      <div className="flex justify-between items-center">
-                        <span className="font-semibold text-amber-900">{livro.nome}</span>
-                        <span className="text-sm text-amber-600">{livro.total_capitulos} cap.</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </>
+              <div>
+                <button
+                  onClick={() => setMostrarAT(v => !v)}
+                  className="w-full flex items-center justify-between px-3 py-2 bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200"
+                >
+                  <span className="font-semibold">Antigo Testamento</span>
+                  <span className="flex items-center gap-2 text-sm">
+                    {livros.filter(l => l.testamento === 'AT').length} livros
+                    <ChevronDown className={`w-4 h-4 transition-transform ${mostrarAT ? 'rotate-180' : ''}`} />
+                  </span>
+                </button>
+                {mostrarAT && (
+                  <div className="space-y-3 mt-3 max-h-96 overflow-y-auto pr-1">
+                    {livros
+                      .filter(l => l.testamento === 'AT')
+                      .filter(l => !filtroLivro || l.nome.toLowerCase().includes(filtroLivro.toLowerCase()))
+                      .map(livro => (
+                        <button
+                          key={livro.id}
+                          onClick={async () => {
+                            setLivroSelecionado(livro);
+                            await carregarCapitulos(livro.id);
+                            setTela('capitulos');
+                          }}
+                          className="w-full bg-white hover:bg-amber-50 p-4 rounded-xl shadow-sm border border-amber-100 transition-all hover:shadow-md text-left"
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className="font-semibold text-amber-900">{livro.nome}</span>
+                            <span className="text-sm text-amber-600">{livro.total_capitulos} cap.</span>
+                          </div>
+                        </button>
+                      ))}
+                    {livros
+                      .filter(l => l.testamento === 'AT')
+                      .filter(l => !filtroLivro || l.nome.toLowerCase().includes(filtroLivro.toLowerCase()))
+                      .length === 0 && (
+                        <div className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-3">
+                          Nenhum livro encontrado.
+                        </div>
+                      )}
+                  </div>
+                )}
+              </div>
             )}
 
+            {/* Novo Testamento */}
             {livros.filter(l => l.testamento === 'NT').length > 0 && (
-              <>
-                <h2 className="text-xl font-semibold text-amber-800 mt-8">Novo Testamento</h2>
-                <div className="space-y-3">
-                  {livros.filter(l => l.testamento === 'NT').map(livro => (
-                    <button
-                      key={livro.id}
-                      onClick={async () => {
-                        setLivroSelecionado(livro);
-                        await carregarCapitulos(livro.id);
-                        setTela('capitulos');
-                      }}
-                      className="w-full bg-white hover:bg-amber-50 p-4 rounded-xl shadow-sm border border-amber-100 transition-all hover:shadow-md text-left"
-                    >
-                      <div className="flex justify-between items-center">
-                        <span className="font-semibold text-amber-900">{livro.nome}</span>
-                        <span className="text-sm text-amber-600">{livro.total_capitulos} cap.</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </>
+              <div>
+                <button
+                  onClick={() => setMostrarNT(v => !v)}
+                  className="w-full flex items-center justify-between px-3 py-2 bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200"
+                >
+                  <span className="font-semibold">Novo Testamento</span>
+                  <span className="flex items-center gap-2 text-sm">
+                    {livros.filter(l => l.testamento === 'NT').length} livros
+                    <ChevronDown className={`w-4 h-4 transition-transform ${mostrarNT ? 'rotate-180' : ''}`} />
+                  </span>
+                </button>
+                {mostrarNT && (
+                  <div className="space-y-3 mt-3 max-h-96 overflow-y-auto pr-1">
+                    {livros
+                      .filter(l => l.testamento === 'NT')
+                      .filter(l => !filtroLivro || l.nome.toLowerCase().includes(filtroLivro.toLowerCase()))
+                      .map(livro => (
+                        <button
+                          key={livro.id}
+                          onClick={async () => {
+                            setLivroSelecionado(livro);
+                            await carregarCapitulos(livro.id);
+                            setTela('capitulos');
+                          }}
+                          className="w-full bg-white hover:bg-amber-50 p-4 rounded-xl shadow-sm border border-amber-100 transition-all hover:shadow-md text-left"
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className="font-semibold text-amber-900">{livro.nome}</span>
+                            <span className="text-sm text-amber-600">{livro.total_capitulos} cap.</span>
+                          </div>
+                        </button>
+                      ))}
+                    {livros
+                      .filter(l => l.testamento === 'NT')
+                      .filter(l => !filtroLivro || l.nome.toLowerCase().includes(filtroLivro.toLowerCase()))
+                      .length === 0 && (
+                        <div className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-3">
+                          Nenhum livro encontrado.
+                        </div>
+                      )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -1625,55 +1791,7 @@ const handleLogin = async (email, senha) => {
               )}
             </div>
             
-            {capituloAtual.audio_url && (
-              <div className="flex flex-wrap gap-4 items-center bg-amber-50 p-4 rounded-lg border border-amber-200">
-                {/* Controle de velocidade */}
-                <div className="flex items-center gap-2">
-                  <Settings className="w-5 h-5 text-amber-600" />
-                  <label className="text-xs font-semibold text-amber-700">Velocidade:</label>
-                  <select
-                    value={velocidade.toString()}
-                    onChange={(e) => handleVelocidade(parseFloat(e.target.value))}
-                    className="bg-white border border-amber-300 rounded px-2 py-1 text-sm text-amber-900"
-                  >
-                    <option value="0.75">0.75x</option>
-                    <option value="1">1.0x</option>
-                    <option value="1.25">1.25x</option>
-                    <option value="1.5">1.5x</option>
-                    <option value="2">2.0x</option>
-                  </select>
-                </div>
-
-                {/* Controle de delay de sincronização */}
-                <div className="flex items-center gap-2 flex-1">
-                  <span className="text-xs font-semibold text-amber-700">Sincronização:</span>
-                  <button
-                    onClick={() => setDelaySync(d => Math.round((d - 0.5) * 10) / 10)}
-                    className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded font-bold text-sm"
-                    title="Atrasar legenda (clique se ela está adiantada)"
-                  >
-                    ← Atrasar
-                  </button>
-                  <span className="text-base font-mono font-bold text-amber-900 min-w-[4rem] text-center bg-white px-3 py-1 rounded border border-amber-300">
-                    {delaySync > 0 ? '+' : ''}{delaySync.toFixed(1)}s
-                  </span>
-                  <button
-                    onClick={() => setDelaySync(d => Math.round((d + 0.5) * 10) / 10)}
-                    className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-bold text-sm"
-                    title="Adiantar legenda (clique se ela está atrasada)"
-                  >
-                    Adiantar →
-                  </button>
-                  <button
-                    onClick={() => setDelaySync(0)}
-                    className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded font-bold text-sm"
-                    title="Resetar para sincronização original"
-                  >
-                    Reset
-                  </button>
-                </div>
-              </div>
-            )}
+            {false && capituloAtual.audio_url && (<div />)}
             
             {delaySync !== 0 && (
               <div className="mt-2 text-xs text-center">
@@ -1725,6 +1843,8 @@ const handleLogin = async (email, senha) => {
                 <audio
                   ref={audioRef}
                   src={capituloAtual.audio_url}
+                  crossOrigin="anonymous"
+                  preload="metadata"
                   onTimeUpdate={handleTimeUpdate}
                   onPlay={() => setTocando(true)}
                   onPause={() => setTocando(false)}
@@ -1768,13 +1888,13 @@ const handleLogin = async (email, senha) => {
                   </div>
                 </div>
 
-                <div className="flex items-center justify-center gap-8">
+                <div className="hidden md:flex items-center justify-center gap-8">
                   <button 
                     className="p-3 hover:bg-amber-100 rounded-full transition-colors"
                     onClick={() => audioRef.current && (audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10))}
                     title="Voltar 10 segundos"
                   >
-                    <SkipBack className="w-6 h-6 text-amber-700" />
+                    <SkipBack className="w-8 h-8 text-amber-800" />
                   </button>
 
                   <button
@@ -1794,13 +1914,94 @@ const handleLogin = async (email, senha) => {
                     onClick={() => audioRef.current && (audioRef.current.currentTime = Math.min(duracao, audioRef.current.currentTime + 10))}
                     title="Avançar 10 segundos"
                   >
-                    <SkipForward className="w-6 h-6 text-amber-700" />
+                    <SkipForward className="w-8 h-8 text-amber-800" />
                   </button>
                 </div>
 
-                <div className="mt-4 text-center text-xs text-amber-600">
-                  <p>Velocidade: {velocidade}x | {capituloAtual.audio_tamanho_bytes ? `${(capituloAtual.audio_tamanho_bytes / 1024 / 1024).toFixed(1)} MB` : ''}</p>
-                </div>
+                {/* Rodapé fixo de controles (mobile) */}
+                {capituloAtual.audio_url && (
+                  <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-amber-200 shadow-[0_-2px_8px_rgba(0,0,0,0.06)] md:static md:rounded-lg md:mt-6">
+                    <div className="max-w-4xl mx-auto p-3 md:p-4 flex flex-wrap items-center gap-3">
+                      <div className="flex md:hidden items-center justify-center gap-8 w-full">
+                        <button 
+                          className="p-4 hover:bg-amber-100 rounded-full transition-colors min-h-[44px]"
+                          onClick={() => audioRef.current && (audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10))}
+                          title="Voltar 10 segundos"
+                        >
+                          <SkipBack className="w-8 h-8 text-amber-800" />
+                          <div className="text-[11px] text-amber-700 mt-1">Voltar</div>
+                        </button>
+
+                        <button
+                          onClick={handlePlayPause}
+                          className="p-5 bg-amber-600 hover:bg-amber-700 rounded-full transition-colors shadow-lg min-h-[48px]"
+                          title={tocando ? 'Pausar' : 'Reproduzir'}
+                        >
+                          {tocando ? (
+                            <Pause className="w-8 h-8 text-white" fill="white" />
+                          ) : (
+                            <Play className="w-8 h-8 text-white" fill="white" />
+                          )}
+                          <div className="text-[11px] text-white mt-1">{tocando ? 'Pausar' : 'Play'}</div>
+                        </button>
+
+                        <button 
+                          className="p-4 hover:bg-amber-100 rounded-full transition-colors min-h-[44px]"
+                          onClick={() => audioRef.current && (audioRef.current.currentTime = Math.min(duracao, audioRef.current.currentTime + 10))}
+                          title="Avançar 10 segundos"
+                        >
+                          <SkipForward className="w-8 h-8 text-amber-800" />
+                          <div className="text-[11px] text-amber-700 mt-1">Avançar</div>
+                        </button>
+                      </div>
+                      {/* Controle de velocidade */}
+                      <div className="flex items-center gap-2">
+                        <Settings className="w-5 h-5 text-amber-600" />
+                        <label className="text-xs font-semibold text-amber-700">Velocidade:</label>
+                        <select
+                          value={velocidade.toString()}
+                          onChange={(e) => handleVelocidade(parseFloat(e.target.value))}
+                          className="bg-white border border-amber-300 rounded px-2 py-1 text-sm text-amber-900"
+                        >
+                          <option value="0.75">0.75x</option>
+                          <option value="1">1.0x</option>
+                          <option value="1.25">1.25x</option>
+                          <option value="1.5">1.5x</option>
+                          <option value="2">2.0x</option>
+                        </select>
+                      </div>
+
+                      {/* Controle de delay de sincronização */}
+                      <div className="flex items-center gap-2 flex-1">
+                        <span className="text-xs font-semibold text-amber-700">Sincronização:</span>
+                        <button
+                          onClick={() => setDelaySync(d => Math.round((d - 0.5) * 10) / 10)}
+                          className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded font-bold text-sm"
+                          title="Atrasar legenda (clique se ela está adiantada)"
+                        >
+                          ← Atrasar
+                        </button>
+                        <span className="text-base font-mono font-bold text-amber-900 min-w-[4rem] text-center bg-white px-3 py-1 rounded border border-amber-300">
+                          {delaySync > 0 ? '+' : ''}{delaySync.toFixed(1)}s
+                        </span>
+                        <button
+                          onClick={() => setDelaySync(d => Math.round((d + 0.5) * 10) / 10)}
+                          className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded font-bold text-sm"
+                          title="Adiantar legenda (clique se ela está atrasada)"
+                        >
+                          Adiantar →
+                        </button>
+                        <button
+                          onClick={() => setDelaySync(0)}
+                          className="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded font-bold text-sm"
+                          title="Resetar para sincronização original"
+                        >
+                          Reset
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Botões de ação */}
                 <div className="mt-6 flex flex-col gap-3">

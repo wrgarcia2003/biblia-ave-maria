@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Calendar, TrendingUp, Clock, Target, BookOpen, CheckCircle, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ArrowLeft, TrendingUp, Clock, Target, BookOpen, CheckCircle, AlertCircle } from 'lucide-react';
 import * as planosService from '../services/planosLeituraService';
 
 const ProgressoLeitura = ({ usuario, planoAtivo, onVoltar }) => {
@@ -7,7 +7,6 @@ const ProgressoLeitura = ({ usuario, planoAtivo, onVoltar }) => {
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState(null);
   const [dadosProgresso, setDadosProgresso] = useState(null);
-  const [historicoSemanal, setHistoricoSemanal] = useState([]);
   const [metasDiarias, setMetasDiarias] = useState([]);
   const [estatisticasDetalhadas, setEstatisticasDetalhadas] = useState(null);
 
@@ -19,39 +18,71 @@ const ProgressoLeitura = ({ usuario, planoAtivo, onVoltar }) => {
   // EFEITOS E CARREGAMENTO
   // =====================================================
   
-  useEffect(() => {
-    if (planoAtivo) {
-      carregarDadosProgresso();
-    }
-  }, [planoAtivo, periodoSelecionado]);
 
-  const carregarDadosProgresso = async () => {
+  const carregarDadosProgresso = useCallback(async () => {
     if (!planoAtivo || !usuario?.email) return;
-    
+
     setCarregando(true);
     setErro(null);
-    
+
     try {
-      // Carregar todos os dados de progresso em paralelo
-      const [progresso, historico, metas, estatisticas] = await Promise.all([
-        planosService.obterProgressoDetalhado(planoAtivo.id),
-        planosService.obterHistoricoProgresso(planoAtivo.id, parseInt(periodoSelecionado)),
-        planosService.obterMetasDiarias(planoAtivo.id, parseInt(periodoSelecionado)),
-        planosService.obterEstatisticasDetalhadas(planoAtivo.id)
-      ]);
-      
-      setDadosProgresso(progresso);
-      setHistoricoSemanal(historico);
+      // Status geral do plano (percentual, capítulos lidos, dias restantes, atraso)
+      const status = await planosService.obterStatusPlano(usuario.email);
+
+      // Progresso diário do plano (capítulos programados e lidos por dia)
+      const progressoDiario = await planosService.obterProgressoDiario(planoAtivo.id);
+
+      // Limitar ao período selecionado (7, 14, 30 dias) e mapear para estrutura do gráfico
+      const diasConsiderados = parseInt(periodoSelecionado);
+      const hoje = new Date();
+      const inicioPeriodo = new Date(hoje);
+      inicioPeriodo.setDate(hoje.getDate() - diasConsiderados + 1);
+
+      const metas = (progressoDiario || [])
+        .filter((dia) => {
+          const data = new Date(dia.data_leitura);
+          return data >= inicioPeriodo && data <= hoje;
+        })
+        .map((dia) => {
+          // Extrair contagens de programados e lidos com robustez para diferentes formatos
+          const parseJsonSafe = (val) => {
+            if (!val) return [];
+            if (Array.isArray(val)) return val;
+            if (typeof val === 'string') {
+              try { return JSON.parse(val); } catch { return []; }
+            }
+            if (typeof val === 'object') return [val];
+            return [];
+          };
+
+          const programados = parseJsonSafe(dia.capitulos_programados);
+          const lidos = parseJsonSafe(dia.capitulos_lidos);
+
+          return {
+            data: dia.data_leitura,
+            meta: programados.length,
+            lidos: lidos.length,
+          };
+        })
+        .sort((a, b) => new Date(a.data) - new Date(b.data));
+
+      setDadosProgresso(status);
       setMetasDiarias(metas);
-      setEstatisticasDetalhadas(estatisticas);
-      
+      // Por ora, não carregar estatísticas detalhadas até termos a fonte correta
+      setEstatisticasDetalhadas(null);
     } catch (error) {
       console.error('Erro ao carregar dados de progresso:', error);
       setErro('Erro ao carregar dados de progresso.');
     } finally {
       setCarregando(false);
     }
-  };
+  }, [planoAtivo, usuario?.email, periodoSelecionado]);
+
+  useEffect(() => {
+    if (planoAtivo) {
+      carregarDadosProgresso();
+    }
+  }, [carregarDadosProgresso, planoAtivo]);
 
   // =====================================================
   // FUNÇÕES AUXILIARES
