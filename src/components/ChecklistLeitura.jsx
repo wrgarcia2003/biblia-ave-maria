@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { CheckCircle, Circle, ArrowLeft, BookOpen, Calendar, Target, Search, Filter } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { CheckCircle, Circle, ArrowLeft, BookOpen, Search, Filter } from 'lucide-react';
 import * as planosService from '../services/planosLeituraService';
 
 const ChecklistLeitura = ({ usuario, planoAtivo, onVoltar, livros }) => {
@@ -23,17 +23,7 @@ const ChecklistLeitura = ({ usuario, planoAtivo, onVoltar, livros }) => {
   // EFEITOS E CARREGAMENTO
   // =====================================================
   
-  useEffect(() => {
-    if (planoAtivo) {
-      carregarChecklist();
-    }
-  }, [planoAtivo]);
-
-  useEffect(() => {
-    agruparCapitulos();
-  }, [capitulosChecklist, capitulosLidos, filtroLivro, filtroStatus, busca]);
-
-  const carregarChecklist = async () => {
+  const carregarChecklist = useCallback(async () => {
     if (!planoAtivo || !usuario?.email) return;
     
     setCarregando(true);
@@ -57,9 +47,19 @@ const ChecklistLeitura = ({ usuario, planoAtivo, onVoltar, livros }) => {
     } finally {
       setCarregando(false);
     }
-  };
+  }, [planoAtivo, usuario?.email]);
 
-  const agruparCapitulos = () => {
+  useEffect(() => {
+    carregarChecklist();
+  }, [carregarChecklist]);
+
+  useEffect(() => {
+    agruparCapitulos();
+  }, [agruparCapitulos]);
+
+  
+
+  const agruparCapitulos = useCallback(() => {
     let capitulosFiltrados = [...capitulosChecklist];
     
     // Aplicar filtros
@@ -105,7 +105,7 @@ const ChecklistLeitura = ({ usuario, planoAtivo, onVoltar, livros }) => {
     });
     
     setAgrupadoPorLivro(agrupado);
-  };
+  }, [capitulosChecklist, capitulosLidos, filtroLivro, filtroStatus, busca]);
 
   // =====================================================
   // FUNÇÕES DE INTERAÇÃO

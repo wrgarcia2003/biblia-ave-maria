@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BookOpen, Play, ArrowLeft, CheckCircle, Clock, Target } from 'lucide-react';
 import * as planosService from '../services/planosLeituraService';
 
@@ -13,7 +13,7 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
   const [planoSelecionado, setPlanoSelecionado] = useState(null);
   const [livroInicio, setLivroInicio] = useState(null);
   const [capituloInicio, setCapituloInicio] = useState(1);
-  const [capitulosDisponiveis, setCapitulosDisponiveis] = useState([]);
+  
   
   // Estados para plano ativo
   const [planoAtivo, setPlanoAtivo] = useState(null);
@@ -25,18 +25,13 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
   // EFEITOS E CARREGAMENTO INICIAL
   // =====================================================
   
-  useEffect(() => {
-    carregarDadosIniciais();
-  }, [usuario]);
-
-  const carregarDadosIniciais = async () => {
+  const carregarDadosIniciais = useCallback(async () => {
     if (!usuario?.email) return;
     
     setCarregando(true);
     setErro(null);
     
     try {
-      // Carregar tipos de planos e plano ativo em paralelo
       const [tipos, plano] = await Promise.all([
         planosService.obterTiposPlanos(),
         planosService.obterPlanoAtivo(usuario.email)
@@ -45,7 +40,6 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
       setTiposPlanos(tipos);
       setPlanoAtivo(plano);
       
-      // Se há plano ativo, carregar status e capítulos de hoje
       if (plano) {
         const [status, hoje, checklist] = await Promise.all([
           planosService.obterStatusPlano(usuario.email),
@@ -56,7 +50,6 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
         setStatusPlano(status);
         setCapitulosHoje(hoje);
         
-        // Extrair capítulos lidos do checklist
         if (checklist && checklist.capitulos) {
           const capitulosLidosSet = new Set();
           checklist.capitulos.forEach(cap => {
@@ -74,7 +67,13 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
     } finally {
       setCarregando(false);
     }
-  };
+  }, [usuario?.email]);
+
+  useEffect(() => {
+    carregarDadosIniciais();
+  }, [carregarDadosIniciais]);
+
+  
 
   // =====================================================
   // FUNÇÕES PARA CRIAÇÃO DE PLANO
@@ -86,8 +85,7 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
     
     try {
       // Carregar capítulos do livro selecionado
-      const capitulos = await onCarregarCapitulos(livro.id);
-      setCapitulosDisponiveis(capitulos);
+      await onCarregarCapitulos(livro.id);
     } catch (error) {
       console.error('Erro ao carregar capítulos:', error);
       setErro('Erro ao carregar capítulos do livro selecionado.');
