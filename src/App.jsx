@@ -172,10 +172,15 @@ export default function BibliaAveMariaApp() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processando, setProcessando] = useState(false);
   const [capituloFocado, setCapituloFocado] = useState(null);
+  const [livroAbertoId, setLivroAbertoId] = useState(null);
   
   const audioRef = useRef(null);
   const versiculosContainerRef = useRef(null);
   const capituloFocoRef = useRef(null);
+  const tempoAtualRef = useRef(0);
+  const rafIdRef = useRef(null);
+  const lastUiUpdateRef = useRef(0);
+  const startsRef = useRef([]);
 
   useEffect(() => {
     if (capituloFocado && capituloFocoRef.current) {
@@ -186,6 +191,28 @@ export default function BibliaAveMariaApp() {
       }
     }
   }, [capituloFocado]);
+
+  useEffect(() => {
+    if (versiculos && versiculos.length > 0) {
+      startsRef.current = versiculos.map(v => parseFloat(v.tempo_inicio) || 0);
+    } else {
+      startsRef.current = [];
+    }
+  }, [versiculos]);
+
+  useEffect(() => {
+    if (capituloAtual && capituloAtual.id) {
+      localStorage.setItem(`delaySync:${capituloAtual.id}`, String(delaySync));
+    }
+  }, [capituloAtual, delaySync]);
+
+  useEffect(() => {
+    if (versiculos && versiculos.length > 0) {
+      startsRef.current = versiculos.map(v => parseFloat(v.tempo_inicio) || 0);
+    } else {
+      startsRef.current = [];
+    }
+  }, [versiculos]);
 
 // =====================================================
 // AUTENTICAÇÃO COM TABELA DE USUÁRIOS (SUPABASE)
@@ -309,57 +336,70 @@ const handleLogin = async (email, senha) => {
   // SINCRONIZAÇÃO MELHORADA COM AUTO-SCROLL E DELAY
   // =====================================================
   useEffect(() => {
-    if (versiculos.length > 0 && duracao > 0 && tocando) {
-      const comTimestamps = versiculos.some(v => v.tempo_inicio !== null && v.tempo_inicio !== undefined);
-      
-      // Aplicar delay de sincronização
-      const tempoAjustado = tempoAtual + delaySync;
-      
-      let novoIndice = versiculoAtivo;
-      
-      if (comTimestamps) {
-        // Usar timestamps reais - busca pelo versículo correto
-        for (let i = 0; i < versiculos.length; i++) {
-          const inicio = parseFloat(versiculos[i].tempo_inicio) || 0;
-          const proximoInicio = i < versiculos.length - 1 ? parseFloat(versiculos[i + 1].tempo_inicio) : duracao;
-          
-          // Verifica se o tempo ajustado está dentro do intervalo do versículo
-          if (tempoAjustado >= inicio && tempoAjustado < proximoInicio) {
-            novoIndice = i;
-            break;
-          }
-        }
-      } else {
-        // Distribuição proporcional
-        const porcentagem = tempoAjustado / duracao;
-        novoIndice = Math.floor(porcentagem * versiculos.length);
-        if (novoIndice >= versiculos.length) {
-          novoIndice = versiculos.length - 1;
+    const binarySearchIndex = (t) => {
+      const n = startsRef.current.length;
+      if (n === 0 || !duracao) return 0;
+      let lo = 0, hi = n - 1, ans = 0;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (t >= startsRef.current[mid]) {
+          ans = mid;
+          lo = mid + 1;
+        } else {
+          hi = mid - 1;
         }
       }
-      
-      if (novoIndice !== versiculoAtivo) {
-        setVersiculoAtivo(novoIndice);
-        
-        // Auto-scroll - posiciona o versículo no topo com margem
+      const nextStart = ans < n - 1 ? startsRef.current[ans + 1] : duracao;
+      if (t >= nextStart) return Math.min(ans + 1, n - 1);
+      return ans;
+    };
+
+    const tick = (ts) => {
+      if (!audioRef.current) return;
+      const now = audioRef.current.currentTime || 0;
+      tempoAtualRef.current = now;
+      const tAdj = now + delaySync;
+      let idx;
+      if (startsRef.current.length > 0) {
+        idx = binarySearchIndex(tAdj);
+      } else if (duracao > 0 && versiculos.length > 0) {
+        const p = tAdj / duracao;
+        idx = Math.max(0, Math.min(versiculos.length - 1, Math.floor(p * versiculos.length)));
+      } else {
+        idx = 0;
+      }
+      if (idx !== versiculoAtivo) {
+        setVersiculoAtivo(idx);
         setTimeout(() => {
-          const elemento = document.getElementById(`versiculo-${novoIndice}`);
-          if (elemento && versiculosContainerRef.current) {
-            const container = versiculosContainerRef.current;
-            const elementoRect = elemento.getBoundingClientRect();
-            const containerRect = container.getBoundingClientRect();
-            const scrollTop = container.scrollTop;
-            const offset = elementoRect.top - containerRect.top + scrollTop - 20;
-            
-            container.scrollTo({
-              top: offset,
-              behavior: 'smooth'
-            });
+          const el = document.getElementById(`versiculo-${idx}`);
+          if (el && versiculosContainerRef.current) {
+            const c = versiculosContainerRef.current;
+            const er = el.getBoundingClientRect();
+            const cr = c.getBoundingClientRect();
+            const st = c.scrollTop;
+            const offset = er.top - cr.top + st - 20;
+            c.scrollTo({ top: offset, behavior: 'smooth' });
           }
         }, 50);
       }
+      const nowMs = performance.now();
+      if (nowMs - lastUiUpdateRef.current > 66) {
+        setTempoAtual(now);
+        lastUiUpdateRef.current = nowMs;
+      }
+      rafIdRef.current = requestAnimationFrame(tick);
+    };
+
+    if (tocando) {
+      lastUiUpdateRef.current = performance.now();
+      rafIdRef.current = requestAnimationFrame(tick);
+      return () => {
+        if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+      };
+    } else {
+      if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
     }
-  }, [tempoAtual, versiculos, duracao, tocando, delaySync, versiculoAtivo]);
+  }, [tocando, delaySync, versiculos, duracao, versiculoAtivo]);
 
   // =====================================================
   // FUNÇÕES DE BUSCA NO SUPABASE
@@ -440,6 +480,8 @@ const handleLogin = async (email, senha) => {
       setTocando(false);
       setTempoAtual(0);
       setVersiculoAtivo(0);
+      const saved = localStorage.getItem(`delaySync:${capituloId}`);
+      setDelaySync(saved ? parseFloat(saved) || 0 : 0);
 
       // Verificar acessibilidade do áudio (HEAD) para evitar erros silenciosos
       if (capData[0]?.audio_url) {
@@ -835,6 +877,16 @@ const handleLogin = async (email, senha) => {
       
       // Recarregar capítulos
       await carregarCapitulos(livroSelecionado.id);
+
+      setTimeout(() => {
+        try {
+          const alvoCap = capitulos.find(c => c.numero === capituloNum);
+          if (alvoCap) {
+            const el = document.getElementById(`cap-${alvoCap.id}`);
+            el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        } catch (_) {}
+      }, 0);
 
     } catch (error) {
       console.error('Erro no upload:', error);
@@ -1359,7 +1411,7 @@ const handleLogin = async (email, senha) => {
   if (tela === 'admin-upload' && isAdmin) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50">
-        <div className="max-w-4xl mx-auto p-6">
+        <div className="max-w-4xl mx-auto p-6 pb-32 md:pb-6">
           <button
             onClick={() => setTela('menu')}
             className="flex items-center gap-2 text-amber-700 hover:text-amber-900 mb-6"
@@ -1392,19 +1444,26 @@ const handleLogin = async (email, senha) => {
                   
                   <button
                     onClick={async () => {
-                      setLivroSelecionado(livro);
-                      await carregarCapitulos(livro.id);
+                      if (livroAbertoId === livro.id) {
+                        setCapituloFocado(null);
+                        setCapitulos([]);
+                        setLivroAbertoId(null);
+                      } else {
+                        setLivroSelecionado(livro);
+                        setLivroAbertoId(livro.id);
+                        await carregarCapitulos(livro.id);
+                      }
                     }}
                     className={`text-sm px-4 py-2 rounded-lg transition-colors ${
-                      livroSelecionado?.id === livro.id 
+                      livroAbertoId === livro.id 
                         ? 'bg-green-100 text-green-800' 
                         : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
                     }`}
                   >
-                    {livroSelecionado?.id === livro.id ? '✓ Selecionado' : 'Selecionar'}
+                    {livroAbertoId === livro.id ? '✓ Selecionado' : 'Selecionar'}
                   </button>
 
-                  {livroSelecionado?.id === livro.id && capitulos.length > 0 && (
+                  {livroAbertoId === livro.id && capitulos.length > 0 && (
                     <div className="mt-4">
                       {capituloFocado ? (
                         <div ref={capituloFocoRef}>
@@ -1832,7 +1891,7 @@ const handleLogin = async (email, senha) => {
 
           <div className="bg-white rounded-b-2xl p-6 shadow-lg">
             {!capituloAtual.audio_url ? (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center mb-4">
                 <p className="text-yellow-800 font-semibold mb-2">⚠️ Áudio não disponível</p>
                 <p className="text-sm text-yellow-700">
                   Faça upload do áudio no painel administrativo.
@@ -1845,15 +1904,16 @@ const handleLogin = async (email, senha) => {
                   src={capituloAtual.audio_url}
                   crossOrigin="anonymous"
                   preload="metadata"
-                  onTimeUpdate={handleTimeUpdate}
                   onPlay={() => setTocando(true)}
                   onPause={() => setTocando(false)}
                   onEnded={() => setTocando(false)}
                   onLoadedMetadata={(e) => {
+                    setDuracao(e.target.duration || 0);
                     e.target.playbackRate = velocidade;
                     console.log('Áudio carregado, velocidade definida para:', velocidade);
                   }}
                   onCanPlay={(e) => {
+                    setDuracao(e.target.duration || 0);
                     e.target.playbackRate = velocidade;
                     console.log('Áudio pronto para reproduzir, velocidade definida para:', velocidade);
                   }}
@@ -1929,7 +1989,6 @@ const handleLogin = async (email, senha) => {
                           title="Voltar 10 segundos"
                         >
                           <SkipBack className="w-8 h-8 text-amber-800" />
-                          <div className="text-[11px] text-amber-700 mt-1">Voltar</div>
                         </button>
 
                         <button
@@ -1942,7 +2001,6 @@ const handleLogin = async (email, senha) => {
                           ) : (
                             <Play className="w-8 h-8 text-white" fill="white" />
                           )}
-                          <div className="text-[11px] text-white mt-1">{tocando ? 'Pausar' : 'Play'}</div>
                         </button>
 
                         <button 
@@ -1951,7 +2009,26 @@ const handleLogin = async (email, senha) => {
                           title="Avançar 10 segundos"
                         >
                           <SkipForward className="w-8 h-8 text-amber-800" />
-                          <div className="text-[11px] text-amber-700 mt-1">Avançar</div>
+                        </button>
+                        
+                        {/* Botão Marcar como Lido no mobile */}
+                        <button
+                          onClick={handleMarcarCapituloLidoPlayer}
+                          disabled={carregando}
+                          className={`p-4 rounded-full transition-colors min-h-[44px] ${
+                            capituloLido
+                              ? 'bg-green-600 hover:bg-green-700'
+                              : 'bg-blue-600 hover:bg-blue-700'
+                          } ${carregando ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          title={capituloLido ? 'Capítulo Lido' : 'Marcar como Lido'}
+                        >
+                          {carregando ? (
+                            <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          ) : capituloLido ? (
+                            <span className="text-white text-xl">✓</span>
+                          ) : (
+                            <span className="text-white text-xl">📖</span>
+                          )}
                         </button>
                       </div>
                       {/* Controle de velocidade */}
@@ -2005,32 +2082,6 @@ const handleLogin = async (email, senha) => {
                 
                 {/* Botões de ação */}
                 <div className="mt-6 flex flex-col gap-3">
-                  {/* Botão para marcar como lido */}
-                  <button
-                    onClick={handleMarcarCapituloLidoPlayer}
-                    disabled={carregando}
-                    className={`px-6 py-3 rounded-lg font-semibold text-white transition-all duration-200 ${
-                      capituloLido
-                        ? 'bg-green-600 hover:bg-green-700 shadow-lg'
-                        : 'bg-blue-600 hover:bg-blue-700 shadow-lg'
-                    } ${carregando ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
-                  >
-                    {carregando ? (
-                      <span className="flex items-center gap-2 justify-center">
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        Processando...
-                      </span>
-                    ) : capituloLido ? (
-                      <span className="flex items-center gap-2 justify-center">
-                        ✅ Capítulo Lido
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-2 justify-center">
-                        📖 Marcar como Lido
-                      </span>
-                    )}
-                  </button>
-
                   {/* Botões de navegação */}
                   <div className="flex gap-2">
                     <button
@@ -2067,6 +2118,34 @@ const handleLogin = async (email, senha) => {
                 </div>
               </>
             )}
+            
+            {/* Botão marcar como lido - sempre visível */}
+            <div className="mt-6 mb-4">
+              <button
+                onClick={handleMarcarCapituloLidoPlayer}
+                disabled={carregando}
+                className={`w-full px-6 py-3 rounded-lg font-semibold text-white transition-all duration-200 ${
+                  capituloLido
+                    ? 'bg-green-600 hover:bg-green-700 shadow-lg'
+                    : 'bg-blue-600 hover:bg-blue-700 shadow-lg'
+                } ${carregando ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
+              >
+                {carregando ? (
+                  <span className="flex items-center gap-2 justify-center">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Processando...
+                  </span>
+                ) : capituloLido ? (
+                  <span className="flex items-center gap-2 justify-center">
+                    ✅ Capítulo Lido
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-2 justify-center">
+                    📖 Marcar como Lido
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
