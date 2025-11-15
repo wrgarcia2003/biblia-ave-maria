@@ -198,14 +198,14 @@ const ChecklistLeitura = ({ usuario, planoAtivo, onVoltar, livros }) => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-amber-900">Checklist de Leitura</h2>
+          <h2 className="text-2xl font-bold text-brand-900">Checklist de Leitura</h2>
           <p className="text-amber-700">
             Plano: {planoAtivo?.tipos_planos_leitura?.nome}
           </p>
         </div>
         <button
           onClick={onVoltar}
-          className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-accent-100 text-accent-800 rounded-lg hover:bg-accent-200 transition-colors"
         >
           <ArrowLeft size={20} />
           Voltar
@@ -229,7 +229,7 @@ const ChecklistLeitura = ({ usuario, planoAtivo, onVoltar, livros }) => {
       {estatisticas && (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow-md p-4 text-center">
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold text-brand-600">
               {estatisticas.percentual_concluido}%
             </div>
             <div className="text-sm text-blue-800">Progresso Geral</div>
@@ -241,7 +241,7 @@ const ChecklistLeitura = ({ usuario, planoAtivo, onVoltar, livros }) => {
             <div className="text-sm text-green-800">Capítulos Lidos</div>
           </div>
           <div className="bg-white rounded-lg shadow-md p-4 text-center">
-            <div className="text-2xl font-bold text-amber-600">
+            <div className="text-2xl font-bold text-accent-600">
               {estatisticas.capitulos_restantes}
             </div>
             <div className="text-sm text-amber-800">Restantes</div>
@@ -258,10 +258,10 @@ const ChecklistLeitura = ({ usuario, planoAtivo, onVoltar, livros }) => {
       {/* Filtros e Busca */}
       <div className="bg-white rounded-lg shadow-md p-4 mb-6">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-amber-900">Filtros</h3>
+          <h3 className="text-lg font-semibold text-brand-900">Filtros</h3>
           <button
             onClick={() => setMostrarFiltros(!mostrarFiltros)}
-            className="flex items-center gap-2 px-3 py-1 text-amber-700 hover:bg-amber-50 rounded"
+            className="flex items-center gap-2 px-3 py-1 text-brand-700 hover:bg-brand-50 rounded"
           >
             <Filter size={16} />
             {mostrarFiltros ? 'Ocultar' : 'Mostrar'} Filtros
@@ -272,26 +272,26 @@ const ChecklistLeitura = ({ usuario, planoAtivo, onVoltar, livros }) => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Busca */}
             <div>
-              <label className="block text-sm font-medium text-amber-800 mb-1">Buscar:</label>
+              <label className="block text-sm font-medium text-brand-800 mb-1">Buscar:</label>
               <div className="relative">
-                <Search size={16} className="absolute left-3 top-3 text-amber-500" />
+                <Search size={16} className="absolute left-3 top-3 text-brand-500" />
                 <input
                   type="text"
                   value={busca}
                   onChange={(e) => setBusca(e.target.value)}
                   placeholder="Nome do livro ou capítulo..."
-                  className="w-full pl-10 pr-3 py-2 border border-amber-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  className="w-full pl-10 pr-3 py-2 border border-neutral-300 rounded focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                 />
               </div>
             </div>
 
             {/* Filtro por Livro */}
             <div>
-              <label className="block text-sm font-medium text-amber-800 mb-1">Livro:</label>
+              <label className="block text-sm font-medium text-brand-800 mb-1">Livro:</label>
               <select
                 value={filtroLivro}
                 onChange={(e) => setFiltroLivro(e.target.value)}
-                className="w-full p-2 border border-amber-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                className="w-full p-2 border border-neutral-300 rounded focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               >
                 <option value="">Todos os livros</option>
                 {obterLivrosDisponiveis().map(livro => (
@@ -304,11 +304,11 @@ const ChecklistLeitura = ({ usuario, planoAtivo, onVoltar, livros }) => {
 
             {/* Filtro por Status */}
             <div>
-              <label className="block text-sm font-medium text-amber-800 mb-1">Status:</label>
+              <label className="block text-sm font-medium text-brand-800 mb-1">Status:</label>
               <select
                 value={filtroStatus}
                 onChange={(e) => setFiltroStatus(e.target.value)}
-                className="w-full p-2 border border-amber-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                className="w-full p-2 border border-neutral-300 rounded focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               >
                 <option value="todos">Todos</option>
                 <option value="lidos">Lidos</option>
@@ -330,15 +330,15 @@ const ChecklistLeitura = ({ usuario, planoAtivo, onVoltar, livros }) => {
           return (
             <div key={grupo.livro.id} className="bg-white rounded-lg shadow-md overflow-hidden">
               {/* Header do Livro */}
-              <div className="bg-amber-50 border-b border-amber-200 p-4">
+              <div className="bg-accent-50 border-b border-accent-200 p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <BookOpen size={20} className="text-amber-600" />
+                    <BookOpen size={20} className="text-brand-600" />
                     <div>
-                      <h3 className="text-lg font-semibold text-amber-900">
+                      <h3 className="text-lg font-semibold text-brand-900">
                         {grupo.livro.nome}
                       </h3>
-                      <p className="text-sm text-amber-700">
+                      <p className="text-sm text-brand-700">
                         {grupo.capitulos.length} capítulos no plano • {progressoLivro}% concluído
                       </p>
                     </div>
@@ -346,9 +346,9 @@ const ChecklistLeitura = ({ usuario, planoAtivo, onVoltar, livros }) => {
                   
                   <div className="flex items-center gap-2">
                     {/* Barra de Progresso */}
-                    <div className="w-32 bg-amber-200 rounded-full h-2">
+                    <div className="w-32 bg-accent-200 rounded-full h-2">
                       <div
-                        className="bg-amber-600 h-2 rounded-full transition-all duration-300"
+                        className="bg-brand-600 h-2 rounded-full transition-all duration-300"
                         style={{ width: `${progressoLivro}%` }}
                       ></div>
                     </div>
@@ -359,7 +359,7 @@ const ChecklistLeitura = ({ usuario, planoAtivo, onVoltar, livros }) => {
                       className={`px-3 py-1 rounded text-sm font-semibold transition-colors ${
                         todosLidos
                           ? 'bg-red-600 text-white hover:bg-red-700'
-                          : 'bg-blue-600 text-white hover:bg-blue-700'
+                          : 'bg-brand-600 text-white hover:bg-brand-700'
                       }`}
                       disabled={carregando}
                     >
@@ -383,7 +383,7 @@ const ChecklistLeitura = ({ usuario, planoAtivo, onVoltar, livros }) => {
                         className={`flex items-center gap-2 p-2 rounded border transition-all ${
                           lido
                             ? 'bg-green-50 border-green-300 text-green-800 hover:bg-green-100'
-                            : 'bg-blue-50 border-blue-300 text-blue-800 hover:bg-blue-100'
+                            : 'bg-brand-50 border-brand-300 text-brand-800 hover:bg-brand-100'
                         }`}
                       >
                         {lido ? (

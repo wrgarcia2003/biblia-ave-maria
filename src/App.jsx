@@ -1,23 +1,38 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Play, Pause, SkipBack, SkipForward, Book, ChevronLeft, ChevronDown, Settings, Upload, LogOut } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react'
+import { Play, Pause, SkipBack, SkipForward, Book, ChevronLeft, ChevronDown, Settings, Upload, LogOut } from 'lucide-react'
+import { supabaseClient } from './lib/supabase'
 
 // Importar componentes dos planos de leitura
-import PlanosLeitura from './components/PlanosLeitura';
-import ChecklistLeitura from './components/ChecklistLeitura';
-import ProgressoLeitura from './components/ProgressoLeitura';
+import PlanosLeitura from './components/PlanosLeitura'
+import ChecklistLeitura from './components/ChecklistLeitura'
+import ProgressoLeitura from './components/ProgressoLeitura'
+import CatequeseList from './pages/CatequeseList'
+import CatequeseDetail from './pages/CatequeseDetail'
+import OracoesList from './pages/OracoesList'
+import OracaoDetail from './pages/OracaoDetail'
+import ThemeToggle from './components/ThemeToggle'
+import BottomNav from './components/BottomNav'
+import Home from './pages/Home'
+import Landing from './pages/Landing'
+import SantosList from './pages/SantosList'
+import SantosDetail from './pages/SantosDetail'
+import AdminCatequese from './pages/AdminCatequese'
+import AdminOracoes from './pages/AdminOracoes'
+import AdminSantos from './pages/AdminSantos'
+import AdminImagens from './pages/AdminImagens'
 
 
 // =====================================================
 // CONFIGURAÇÃO DO SUPABASE (usando fetch direto)
 // =====================================================
 // OPÇÃO 1: Usando variáveis de ambiente (.env) - RECOMENDADO
-const SUPABASE_URL  = process.env.REACT_APP_SUPABASE_URL || '';
-const SUPABASE_KEY  = process.env.REACT_APP_SUPABASE_ANON_KEY || '';
+const SUPABASE_URL  = process.env.REACT_APP_SUPABASE_URL || ''
+const SUPABASE_KEY  = process.env.REACT_APP_SUPABASE_ANON_KEY || ''
 
 
 // Verificar se as credenciais estão configuradas
 if (!SUPABASE_URL  || !SUPABASE_KEY ) {
-  console.error('⚠️ Configure REACT_APP_SUPABASE_URL e REACT_APP_SUPABASE_ANON_KEY no arquivo .env');
+  console.error('Credenciais Supabase ausentes')
 }
 
 const supabase = {
@@ -136,10 +151,10 @@ const supabase = {
       }
     })
   }
-};
+}
 
 export default function BibliaAveMariaApp() {
-  const [tela, setTela] = useState('login');
+  const [tela, setTela] = useState('landing');
   const [usuario, setUsuario] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [livros, setLivros] = useState([]);
@@ -158,7 +173,10 @@ export default function BibliaAveMariaApp() {
   
   // Estado para controlar se o capítulo atual está marcado como lido
   const [capituloLido, setCapituloLido] = useState(false);
-  const [mensagem, setMensagem] = useState('');
+  const [mensagem, setMensagem] = useState('')
+  const [catequeseItem, setCatequeseItem] = useState(null)
+  const [oracaoItem, setOracaoItem] = useState(null)
+  const [santoItem, setSantoItem] = useState(null)
   
   // Estado de busca e acordeões para lista de livros (mobile-friendly)
   const [filtroLivro, setFiltroLivro] = useState('');
@@ -201,6 +219,21 @@ export default function BibliaAveMariaApp() {
   }, [versiculos]);
 
   useEffect(() => {
+    const initial = window.location.hash.slice(1)
+    if (initial) setTela(initial)
+    const onHashChange = () => {
+      const next = window.location.hash.slice(1)
+      if (next) setTela(next)
+    }
+    window.addEventListener('hashchange', onHashChange)
+    return () => window.removeEventListener('hashchange', onHashChange)
+  }, [])
+
+  useEffect(() => {
+    try { window.location.hash = tela } catch (_) {}
+  }, [tela])
+
+  useEffect(() => {
     if (capituloAtual && capituloAtual.id) {
       localStorage.setItem(`delaySync:${capituloAtual.id}`, String(delaySync));
     }
@@ -218,119 +251,58 @@ export default function BibliaAveMariaApp() {
 // AUTENTICAÇÃO COM TABELA DE USUÁRIOS (SUPABASE)
 // =====================================================
 const handleLogin = async (email, senha) => {
-  setErro(null);
-  setCarregando(true);
-  
+  setErro(null)
+  setCarregando(true)
   try {
-    // 1. Buscar o usuário na tabela 'usuarios_app'
-    // ATENÇÃO: A busca por senha em texto simples é insegura.
-    // Em produção, use a autenticação nativa do Supabase (auth.signInWithPassword)
-    // ou uma coluna de hash de senha (ex: bcrypt) no seu backend.
-    // O objeto 'supabase' customizado só suporta um '.eq()', então vamos usar o filtro
-    // de URL diretamente, que o .eq() deve estar gerando nos bastidores.
-    // No entanto, como o .eq() customizado só aceita um par, vamos usar a função execute
-    // para buscar todos os usuários com o email e depois filtrar a senha localmente
-    // ou modificar a implementação do .eq() para aceitar mais de um filtro.
-    
-    // Opção 1: Modificar a chamada para usar o filtro de URL diretamente,
-    // se o objeto 'supabase' customizado suportar a sintaxe de filtro de URL.
-    // Pela implementação, o .eq() customizado só aceita um par de coluna/valor.
-    
-    // Opção 2: Usar a chamada `fetch` diretamente para construir a URL com múltiplos filtros.
-    // A implementação customizada do `supabase` não permite múltiplos `.eq()`.
-    // Vamos usar a função `execute` com um filtro, e adicionar o segundo filtro manualmente na URL.
-    
-    // Revertendo para a busca por email e filtrando a senha localmente,
-    // ou, melhor, ajustando para usar a sintaxe de filtro de URL que o Supabase REST API suporta.
-    
-    // A implementação customizada do `supabase` é muito limitada.
-    // O método `select` não retorna um objeto que permita encadear múltiplos `.eq()`.
-    // A única forma de resolver isso sem reescrever todo o objeto `supabase` customizado
-    // é buscar por um filtro e depois filtrar localmente, ou usar a sintaxe de filtro de URL
-    // diretamente na chamada `fetch` (que é o que o objeto customizado faz).
-    
-    // Vamos tentar buscar por email e senha, mas usando a implementação customizada
-    // que só permite um filtro. O erro é na segunda chamada `.eq()`.
-    // A implementação do `supabase` customizado é:
-    // .eq(column, value) => ({ order, single })
-    // O objeto retornado não tem `.eq()` novamente.
-    
-    // A solução mais limpa é buscar por email e depois verificar a senha localmente.
-    // Isso é menos eficiente, mas funciona com a implementação customizada limitada.
-    // Alternativamente, podemos usar a função `execute` e construir a URL manualmente
-    // para incluir os dois filtros, mas a função `execute` customizada não é exposta
-    // diretamente após o `.eq()` sem `.order()`.
-    
-    // Vamos usar a função `single` no email, e depois verificar a senha.
-    const { data: usuarioData, error: usuarioError } = await supabase
-      .from('usuarios_app')
-      .select('*')
-      .eq('email', email)
-      .single();
-      
-    if (usuarioError || !usuarioData || usuarioData.senha !== senha) {
-      setErro('Credenciais inválidas ou usuário não encontrado.');
-      return;
-    }
-    // Se a senha for verificada localmente, o restante do código é o mesmo.
-    
-    // O código original era:
-    /*
-    const { data: usuarioData, error: usuarioError } = await supabase
-      .from('usuarios_app')
-      .select('*')
-      .eq('email', email)
-      .eq('senha', senha) 
-      .single();
-      
-    if (usuarioError || !usuarioData) {
-      setErro('Credenciais inválidas ou usuário não encontrado.');
-      return;
-    }
-    */
-      
-    if (usuarioError || !usuarioData) {
-      setErro('Credenciais inválidas ou usuário não encontrado.');
-      return;
-    }
-    
-    // 2. Definir o estado do usuário e o nível de acesso
-    const isAdminUser = usuarioData.role === 'admin';
-    
-    setUsuario({ email: usuarioData.email, nome: usuarioData.nome || 'Usuário' });
-    setIsAdmin(isAdminUser);
-    await carregarLivros();
-    
-    // 3. Carregar plano ativo do usuário
-    try {
-      const planosService = await import('./services/planosLeituraService');
-      const plano = await planosService.obterPlanoAtivo(usuarioData.email);
-      setPlanoAtivo(plano);
-    } catch (error) {
-      console.error('Erro ao carregar plano ativo:', error);
-    }
-    
-    // 4. Redirecionar com base no nível de acesso
-    if (isAdminUser) {
-      setTela('menu'); // Tela de administração
+    const { data: authData, error: authErr } = await supabaseClient.auth.signInWithPassword({ email, password: senha })
+    let usuarioData = null
+    if (!authErr && authData && authData.user && authData.user.email) {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/usuarios_app?select=*&email=eq.${authData.user.email}`, {
+        headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` }
+      })
+      const arr = await res.json()
+      usuarioData = arr && arr[0] ? arr[0] : { email: authData.user.email, nome: 'Usuário', role: 'user' }
     } else {
-      setTela('livros'); // Tela padrão para usuários
+      const { data: usuarioDataFetch, error: usuarioError } = await supabase
+        .from('usuarios_app')
+        .select('*')
+        .eq('email', email)
+        .single()
+      if (usuarioError || !usuarioDataFetch || usuarioDataFetch.senha !== senha) {
+        setErro('Credenciais inválidas ou usuário não encontrado.')
+        return
+      }
+      usuarioData = usuarioDataFetch
     }
-    
+    const isAdminUser = usuarioData.role === 'admin'
+    setUsuario({ email: usuarioData.email, nome: usuarioData.nome || 'Usuário' })
+    setIsAdmin(isAdminUser)
+    await carregarLivros()
+    try {
+      const planosService = await import('./services/planosLeituraService')
+      const plano = await planosService.obterPlanoAtivo(usuarioData.email)
+      setPlanoAtivo(plano)
+    } catch (_) {}
+    if (isAdminUser) {
+      setTela('menu')
+    } else {
+      setTela('home')
+    }
   } catch (error) {
-    console.error('Erro no login:', error);
-    setErro('Erro ao fazer login. Verifique suas credenciais e conexão com o Supabase.');
+    console.error('Erro no login:', error)
+    setErro('Erro ao fazer login. Verifique suas credenciais e conexão com o Supabase.')
   } finally {
-    setCarregando(false);
+    setCarregando(false)
   }
-};
+}
 
-  const handleLogout = () => {
-    setUsuario(null);
-    setIsAdmin(false);
-    setPlanoAtivo(null);
-    setTela('login');
-  };
+  const handleLogout = async () => {
+    try { await supabaseClient.auth.signOut() } catch (_) {}
+    setUsuario(null)
+    setIsAdmin(false)
+    setPlanoAtivo(null)
+    setTela('login')
+  }
 
   // =====================================================
   // SINCRONIZAÇÃO MELHORADA COM AUTO-SCROLL E DELAY
@@ -525,12 +497,6 @@ const handleLogin = async (email, senha) => {
     }
   };
 
-  const handleTimeUpdate = () => {
-    if (audioRef.current) {
-      setTempoAtual(audioRef.current.currentTime);
-      setDuracao(audioRef.current.duration);
-    }
-  };
 
   const handleSeek = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -1296,14 +1262,25 @@ const handleLogin = async (email, senha) => {
   // =====================================================
   // RENDERIZAÇÃO - TELA DE LOGIN
   // =====================================================
+  if (tela === 'landing') {
+    return (
+      <Landing
+        onEntrar={() => setTela('login')}
+        onGoBiblia={() => setTela('livros')}
+        onGoCatequese={() => setTela('catequese')}
+        onGoOracoes={() => setTela('oracoes')}
+        onGoSantos={() => setTela('santos-list')}
+      />
+    )
+  }
   if (tela === 'login') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-brand-50 to-neutral-50 flex items-center justify-center p-6">
         <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
           <div className="text-center mb-8">
-            <Book className="w-16 h-16 text-amber-600 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold text-amber-900">Bíblia Ave Maria</h1>
-            <p className="text-amber-600 mt-2">Versão com Áudio</p>
+            <Book className="w-16 h-16 text-brand-600 mx-auto mb-4" />
+            <h1 className="text-3xl font-bold text-brand-900">Bíblia Ave Maria</h1>
+            <p className="text-brand-600 mt-2">Versão com Áudio</p>
           </div>
 
           <form onSubmit={(e) => {
@@ -1320,7 +1297,7 @@ const handleLogin = async (email, senha) => {
                 <input
                   type="email"
                   name="email"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500"
                   placeholder="seu@email.com"
                   required
                 />
@@ -1331,7 +1308,7 @@ const handleLogin = async (email, senha) => {
                 <input
                   type="password"
                   name="senha"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500"
                   placeholder="••••••••"
                   required
                 />
@@ -1340,7 +1317,7 @@ const handleLogin = async (email, senha) => {
               <button
                 type="submit"
                 disabled={carregando}
-                className="w-full bg-amber-600 hover:bg-amber-700 text-white py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-brand-600 hover:bg-brand-700 text-white py-3 rounded-lg font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {carregando ? 'Entrando...' : 'Entrar'}
               </button>
@@ -1362,12 +1339,12 @@ const handleLogin = async (email, senha) => {
   // =====================================================
   if (tela === 'menu' && isAdmin) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50">
+      <div className="min-h-screen bg-gradient-to-br from-brand-50 to-neutral-50">
         <div className="max-w-4xl mx-auto p-6 pb-24 md:pb-0">
           <div className="flex justify-between items-center mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-amber-900">Painel Administrativo</h1>
-              <p className="text-amber-600">Olá, {usuario?.nome}</p>
+              <h1 className="text-3xl font-bold text-brand-900">Painel Administrativo</h1>
+              <p className="text-brand-600">Olá, {usuario?.nome}</p>
             </div>
             <button
               onClick={handleLogout}
@@ -1386,8 +1363,8 @@ const handleLogin = async (email, senha) => {
               }}
               className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-shadow"
             >
-              <Book className="w-12 h-12 text-amber-600 mb-4" />
-              <h2 className="text-xl font-bold text-amber-900 mb-2">Visualizar Bíblia</h2>
+              <Book className="w-12 h-12 text-brand-600 mb-4" />
+              <h2 className="text-xl font-bold text-brand-900 mb-2">Visualizar Bíblia</h2>
               <p className="text-gray-600">Ler e ouvir os capítulos</p>
             </button>
 
@@ -1396,8 +1373,44 @@ const handleLogin = async (email, senha) => {
               className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-shadow"
             >
               <Upload className="w-12 h-12 text-green-600 mb-4" />
-              <h2 className="text-xl font-bold text-amber-900 mb-2">Gerenciar Conteúdo</h2>
+              <h2 className="text-xl font-bold text-brand-900 mb-2">Gerenciar Conteúdo</h2>
               <p className="text-gray-600">Upload de áudios e textos</p>
+            </button>
+
+            <button
+              onClick={() => setTela('admin-catequese')}
+              className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-shadow"
+            >
+              <Upload className="w-12 h-12 text-green-600 mb-4" />
+              <h2 className="text-xl font-bold text-brand-900 mb-2">Gerenciar Catequese</h2>
+              <p className="text-gray-600">Áudio, texto e sincronização</p>
+            </button>
+
+            <button
+              onClick={() => setTela('admin-oracoes')}
+              className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-shadow"
+            >
+              <Upload className="w-12 h-12 text-green-600 mb-4" />
+              <h2 className="text-xl font-bold text-brand-900 mb-2">Gerenciar Orações</h2>
+              <p className="text-gray-600">Áudio, texto e sincronização</p>
+            </button>
+
+            <button
+              onClick={() => setTela('admin-santos')}
+              className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-shadow"
+            >
+              <Upload className="w-12 h-12 text-green-600 mb-4" />
+              <h2 className="text-xl font-bold text-brand-900 mb-2">Santos do Dia</h2>
+              <p className="text-gray-600">Link do vídeo e história</p>
+            </button>
+
+            <button
+              onClick={() => setTela('admin-imagens')}
+              className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-shadow"
+            >
+              <Upload className="w-12 h-12 text-green-600 mb-4" />
+              <h2 className="text-xl font-bold text-brand-900 mb-2">Imagens da Landing</h2>
+              <p className="text-gray-600">Enviar e listar imagens</p>
             </button>
           </div>
         </div>
@@ -1410,7 +1423,7 @@ const handleLogin = async (email, senha) => {
   // =====================================================
   if (tela === 'admin-upload' && isAdmin) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50">
+      <div className="min-h-screen bg-gradient-to-br from-brand-50 to-neutral-50">
         <div className="max-w-4xl mx-auto p-6 pb-32 md:pb-6">
           <button
             onClick={() => setTela('menu')}
@@ -1423,8 +1436,8 @@ const handleLogin = async (email, senha) => {
           <h1 className="text-2xl font-bold text-amber-900 mb-6">Gerenciar Conteúdo</h1>
 
           {!livroSelecionado && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <p className="text-blue-800 font-semibold mb-2">📖 Como usar:</p>
+                <div className="bg-accent-50 border border-accent-200 rounded-lg p-4 mb-6">
+              <p className="text-accent-800 font-semibold mb-2">📖 Como usar:</p>
               <ol className="list-decimal ml-5 text-sm text-blue-700 space-y-1">
                 <li>Selecione um livro abaixo</li>
                 <li>Faça upload do áudio MP3 para cada capítulo</li>
@@ -1435,12 +1448,12 @@ const handleLogin = async (email, senha) => {
           )}
 
           {carregando ? (
-            <div className="text-center text-amber-700">Carregando...</div>
+            <div className="text-center text-brand-700">Carregando...</div>
           ) : (
             <div className="space-y-6">
               {livros.map(livro => (
                 <div key={livro.id} className="bg-white rounded-xl shadow-lg p-6">
-                  <h2 className="text-xl font-bold text-amber-900 mb-4">{livro.nome}</h2>
+                  <h2 className="text-xl font-bold text-brand-900 mb-4">{livro.nome}</h2>
                   
                   <button
                     onClick={async () => {
@@ -1457,7 +1470,7 @@ const handleLogin = async (email, senha) => {
                     className={`text-sm px-4 py-2 rounded-lg transition-colors ${
                       livroAbertoId === livro.id 
                         ? 'bg-green-100 text-green-800' 
-                        : 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                        : 'bg-accent-100 text-accent-800 hover:bg-accent-200'
                     }`}
                   >
                     {livroAbertoId === livro.id ? '✓ Selecionado' : 'Selecionar'}
@@ -1497,7 +1510,7 @@ const handleLogin = async (email, senha) => {
                               </div>
                               <div className="grid grid-cols-3 gap-3 mt-2">
                                 <label className="cursor-pointer">
-                                  <div className="bg-blue-100 text-blue-700 px-4 py-3 rounded text-sm text-center hover:bg-blue-200 min-h-[44px] font-medium">
+                                  <div className="bg-brand-100 text-brand-700 px-4 py-3 rounded text-sm text-center hover:bg-brand-200 min-h-[44px] font-medium">
                                     📁 Áudio
                                   </div>
                                   <input
@@ -1545,7 +1558,7 @@ const handleLogin = async (email, senha) => {
                               </div>
                               <div className="grid grid-cols-3 gap-3 mt-2">
                                 <label className="cursor-pointer">
-                                  <div className="bg-blue-100 text-blue-700 px-4 py-3 rounded text-sm text-center hover:bg-blue-200 min-h-[44px] font-medium">
+                                  <div className="bg-brand-100 text-brand-700 px-4 py-3 rounded text-sm text-center hover:bg-brand-200 min-h-[44px] font-medium">
                                     📁 Áudio
                                   </div>
                                   <input
@@ -1581,7 +1594,7 @@ const handleLogin = async (email, senha) => {
                               <div className="mt-2 text-right">
                                 <button
                                   onClick={() => setCapituloFocado(cap.id)}
-                                  className="text-xs px-2 py-1 rounded bg-amber-50 text-amber-800 hover:bg-amber-100"
+                                  className="text-xs px-2 py-1 rounded bg-accent-50 text-accent-800 hover:bg-accent-100"
                                 >
                                   Abrir
                                 </button>
@@ -1622,24 +1635,27 @@ const handleLogin = async (email, senha) => {
   // =====================================================
   if (tela === 'livros') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50">
+      <div className="min-h-screen bg-gradient-to-br from-brand-50 to-neutral-50">
         <div className="max-w-2xl mx-auto p-6">
           <div className="flex justify-between items-center mb-8">
             <div className="text-center flex-1">
               <div className="flex items-center justify-center gap-3 mb-2">
-                <Book className="w-10 h-10 text-amber-700" />
-                <h1 className="text-3xl font-bold text-amber-900">Bíblia Ave Maria</h1>
+                <Book className="w-10 h-10 text-brand-700" />
+                <h1 className="text-3xl font-bold text-brand-900">Bíblia Ave Maria</h1>
               </div>
-              <p className="text-amber-700">Versão Católica com Áudio</p>
+              <p className="text-brand-700">Versão Católica com Áudio</p>
             </div>
             
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-3 py-2 bg-amber-100 text-amber-700 rounded-lg hover:bg-amber-200 text-sm"
-            >
-              <LogOut className="w-4 h-4" />
-              Sair
-            </button>
+            <div className="flex items-center gap-2">
+              <ThemeToggle />
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-3 py-2 bg-accent-100 text-accent-700 rounded-lg hover:bg-accent-200 text-sm"
+              >
+                <LogOut className="w-4 h-4" />
+                Sair
+              </button>
+            </div>
           </div>
 
           {isAdmin && (
@@ -1652,24 +1668,40 @@ const handleLogin = async (email, senha) => {
             </button>
           )}
 
-          {/* Botão para Planos de Leitura */}
+          {/* Botões de navegação rápida */}
           <button
             onClick={() => setTela('planos-leitura')}
-            className="w-full mb-4 bg-blue-100 text-blue-700 px-4 py-2 rounded-lg hover:bg-blue-200 flex items-center justify-center gap-2"
+            className="w-full mb-4 bg-brand-100 text-brand-700 px-4 py-2 rounded-lg hover:bg-brand-200 flex items-center justify-center gap-2"
           >
             <Book className="w-4 h-4" />
             Planos de Leitura
           </button>
 
+          <button
+            onClick={() => setTela('catequese')}
+            className="w-full mb-4 bg-accent-100 text-accent-700 px-4 py-2 rounded-lg hover:bg-accent-200 flex items-center justify-center gap-2"
+          >
+            <Book className="w-4 h-4" />
+            Catequese
+          </button>
+
+          <button
+            onClick={() => setTela('oracoes')}
+            className="w-full mb-4 bg-accent-100 text-accent-700 px-4 py-2 rounded-lg hover:bg-accent-200 flex items-center justify-center gap-2"
+          >
+            <Book className="w-4 h-4" />
+            Orações
+          </button>
+
           <div className="space-y-6">
             {/* Busca por livro */}
-            <div className="sticky top-0 bg-amber-50 py-3 z-10">
+            <div className="sticky top-0 bg-accent-50 py-3 z-10">
               <input
                 type="text"
                 value={filtroLivro}
                 onChange={(e) => setFiltroLivro(e.target.value)}
                 placeholder="Buscar livro..."
-                className="w-full px-4 py-2 rounded-lg border border-amber-200 focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white shadow-sm"
+                className="w-full px-4 py-2 rounded-lg border border-accent-200 focus:outline-none focus:ring-2 focus:ring-accent-400 bg-white shadow-sm"
               />
             </div>
 
@@ -1678,7 +1710,7 @@ const handleLogin = async (email, senha) => {
               <div>
                 <button
                   onClick={() => setMostrarAT(v => !v)}
-                  className="w-full flex items-center justify-between px-3 py-2 bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200"
+                  className="w-full flex items-center justify-between px-3 py-2 bg-accent-100 text-accent-800 rounded-lg hover:bg-accent-200"
                 >
                   <span className="font-semibold">Antigo Testamento</span>
                   <span className="flex items-center gap-2 text-sm">
@@ -1699,11 +1731,11 @@ const handleLogin = async (email, senha) => {
                             await carregarCapitulos(livro.id);
                             setTela('capitulos');
                           }}
-                          className="w-full bg-white hover:bg-amber-50 p-4 rounded-xl shadow-sm border border-amber-100 transition-all hover:shadow-md text-left"
+                          className="w-full bg-white hover:bg-neutral-50 p-4 rounded-xl shadow-sm border border-neutral-100 transition-all hover:shadow-md text-left"
                         >
                           <div className="flex justify-between items-center">
-                            <span className="font-semibold text-amber-900">{livro.nome}</span>
-                            <span className="text-sm text-amber-600">{livro.total_capitulos} cap.</span>
+                            <span className="font-semibold text-brand-900">{livro.nome}</span>
+                            <span className="text-sm text-brand-600">{livro.total_capitulos} cap.</span>
                           </div>
                         </button>
                       ))}
@@ -1711,7 +1743,7 @@ const handleLogin = async (email, senha) => {
                       .filter(l => l.testamento === 'AT')
                       .filter(l => !filtroLivro || l.nome.toLowerCase().includes(filtroLivro.toLowerCase()))
                       .length === 0 && (
-                        <div className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-3">
+                        <div className="text-sm text-brand-700 bg-brand-50 border border-brand-100 rounded-lg p-3">
                           Nenhum livro encontrado.
                         </div>
                       )}
@@ -1725,7 +1757,7 @@ const handleLogin = async (email, senha) => {
               <div>
                 <button
                   onClick={() => setMostrarNT(v => !v)}
-                  className="w-full flex items-center justify-between px-3 py-2 bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200"
+                  className="w-full flex items-center justify-between px-3 py-2 bg-accent-100 text-accent-800 rounded-lg hover:bg-accent-200"
                 >
                   <span className="font-semibold">Novo Testamento</span>
                   <span className="flex items-center gap-2 text-sm">
@@ -1746,11 +1778,11 @@ const handleLogin = async (email, senha) => {
                             await carregarCapitulos(livro.id);
                             setTela('capitulos');
                           }}
-                          className="w-full bg-white hover:bg-amber-50 p-4 rounded-xl shadow-sm border border-amber-100 transition-all hover:shadow-md text-left"
+                          className="w-full bg-white hover:bg-neutral-50 p-4 rounded-xl shadow-sm border border-neutral-100 transition-all hover:shadow-md text-left"
                         >
                           <div className="flex justify-between items-center">
-                            <span className="font-semibold text-amber-900">{livro.nome}</span>
-                            <span className="text-sm text-amber-600">{livro.total_capitulos} cap.</span>
+                            <span className="font-semibold text-brand-900">{livro.nome}</span>
+                            <span className="text-sm text-brand-600">{livro.total_capitulos} cap.</span>
                           </div>
                         </button>
                       ))}
@@ -1758,7 +1790,7 @@ const handleLogin = async (email, senha) => {
                       .filter(l => l.testamento === 'NT')
                       .filter(l => !filtroLivro || l.nome.toLowerCase().includes(filtroLivro.toLowerCase()))
                       .length === 0 && (
-                        <div className="text-sm text-amber-700 bg-amber-50 border border-amber-100 rounded-lg p-3">
+                        <div className="text-sm text-brand-700 bg-brand-50 border border-brand-100 rounded-lg p-3">
                           Nenhum livro encontrado.
                         </div>
                       )}
@@ -1767,6 +1799,12 @@ const handleLogin = async (email, senha) => {
               </div>
             )}
           </div>
+          <BottomNav
+            onGoBiblia={() => setTela('livros')}
+            onGoPlanos={() => setTela('planos-leitura')}
+            onGoCatequese={() => setTela('catequese')}
+            onGoOracoes={() => setTela('oracoes')}
+          />
         </div>
       </div>
     );
@@ -1777,7 +1815,7 @@ const handleLogin = async (email, senha) => {
   // =====================================================
   if (tela === 'capitulos' && livroSelecionado) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50">
+      <div className="min-h-screen bg-gradient-to-br from-brand-50 to-neutral-50">
         <div className="max-w-2xl mx-auto p-6">
           <button
             onClick={() => setTela('livros')}
@@ -1787,10 +1825,10 @@ const handleLogin = async (email, senha) => {
             Voltar aos livros
           </button>
 
-          <h1 className="text-2xl font-bold text-amber-900 mb-6">{livroSelecionado.nome}</h1>
+          <h1 className="text-2xl font-bold text-brand-900 mb-6">{livroSelecionado.nome}</h1>
 
           {carregando ? (
-            <div className="text-center text-amber-700">Carregando capítulos...</div>
+            <div className="text-center text-brand-700">Carregando capítulos...</div>
           ) : capitulos.length === 0 ? (
             <div className="text-center text-amber-700">Nenhum capítulo encontrado.</div>
           ) : (
@@ -1804,7 +1842,7 @@ const handleLogin = async (email, senha) => {
                   }}
                   className={`p-4 rounded-lg shadow-sm border transition-all font-semibold ${
                     cap.audio_url
-                      ? 'bg-white hover:bg-amber-100 border-amber-100 hover:shadow-md text-amber-900'
+                      ? 'bg-white hover:bg-neutral-50 border-neutral-100 hover:shadow-md text-brand-900'
                       : 'bg-gray-100 border-gray-200 text-gray-500'
                   }`}
                   title={cap.audio_url ? 'Áudio disponível' : 'Sem áudio ainda'}
@@ -1827,7 +1865,7 @@ const handleLogin = async (email, senha) => {
     const livroNome = capituloAtual.livros?.nome || capituloAtual.livros?.[0]?.nome || 'Carregando...';
     
     return (
-      <div className="min-h-screen bg-gradient-to-br from-amber-50 to-orange-50">
+      <div className="min-h-screen bg-gradient-to-br from-brand-50 to-neutral-50">
         <div className="max-w-4xl mx-auto p-6">
           <button
             onClick={() => setTela('capitulos')}
@@ -1837,14 +1875,14 @@ const handleLogin = async (email, senha) => {
             Voltar aos capítulos
           </button>
 
-          <div className="bg-white rounded-t-2xl p-6 shadow-lg border-b border-amber-100">
+          <div className="bg-white rounded-t-2xl p-6 shadow-lg border-b border-neutral-100">
             <div className="mb-4">
-              <h1 className="text-2xl font-bold text-amber-900 mb-2">
+              <h1 className="text-2xl font-bold text-brand-900 mb-2">
                 {livroNome} - Capítulo {capituloAtual.numero}
               </h1>
               
               {versiculos.length > 0 && (
-                <p className="text-sm text-amber-600">
+                <p className="text-sm text-brand-600">
                   {versiculos.length} versículos
                 </p>
               )}
@@ -1854,7 +1892,7 @@ const handleLogin = async (email, senha) => {
             
             {delaySync !== 0 && (
               <div className="mt-2 text-xs text-center">
-                <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-semibold">
+                <span className="bg-brand-100 text-brand-800 px-3 py-1 rounded-full font-semibold">
                   💡 {delaySync > 0 ? 'Legenda adiantada' : 'Legenda atrasada'} em {Math.abs(delaySync)}s
                 </span>
               </div>
@@ -1866,7 +1904,7 @@ const handleLogin = async (email, senha) => {
             className="bg-white p-6 max-h-96 overflow-y-auto"
           >
             {carregando ? (
-              <div className="text-center text-amber-700">Carregando versículos...</div>
+              <div className="text-center text-brand-700">Carregando versículos...</div>
             ) : versiculos.length === 0 ? (
               <div className="text-center text-amber-700">
                 Nenhum versículo encontrado. Execute o SQL de importação!
@@ -1878,11 +1916,11 @@ const handleLogin = async (email, senha) => {
                   id={`versiculo-${index}`}
                   className={`mb-4 text-lg leading-relaxed transition-all duration-300 ${
                     index === versiculoAtivo
-                      ? 'bg-amber-100 -mx-4 px-4 py-2 rounded-lg font-medium text-amber-900 scale-[1.01]'
+                      ? 'bg-accent-100 -mx-4 px-4 py-2 rounded-lg font-medium text-brand-900 scale-[1.01]'
                       : 'text-gray-700'
                   }`}
                 >
-                  <sup className="font-bold text-amber-600 mr-2">{versiculo.numero}</sup>
+                  <sup className="font-bold text-brand-600 mr-2">{versiculo.numero}</sup>
                   {versiculo.texto}
                 </p>
               ))
@@ -1932,16 +1970,16 @@ const handleLogin = async (email, senha) => {
                 <div className="mb-6">
                   <div
                     onClick={handleSeek}
-                    className="h-2 bg-amber-200 rounded-full cursor-pointer overflow-hidden"
+                    className="h-2 bg-accent-200 rounded-full cursor-pointer overflow-hidden"
                   >
                     <div
-                      className="h-full bg-amber-600 transition-all"
+                      className="h-full bg-brand-600 transition-all"
                       style={{ width: `${(tempoAtual / duracao) * 100 || 0}%` }}
                     />
                   </div>
-                  <div className="flex justify-between text-sm text-amber-700 mt-2">
+                  <div className="flex justify-between text-sm text-brand-700 mt-2">
                     <span>{formatTime(tempoAtual)}</span>
-                    <span className="text-xs text-amber-600">
+                    <span className="text-xs text-brand-600">
                       Versículo {versiculoAtivo + 1} de {versiculos.length}
                     </span>
                     <span>{formatTime(duracao)}</span>
@@ -1950,16 +1988,16 @@ const handleLogin = async (email, senha) => {
 
                 <div className="hidden md:flex items-center justify-center gap-8">
                   <button 
-                    className="p-3 hover:bg-amber-100 rounded-full transition-colors"
+                    className="p-3 hover:bg-neutral-100 rounded-full transition-colors"
                     onClick={() => audioRef.current && (audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10))}
                     title="Voltar 10 segundos"
                   >
-                    <SkipBack className="w-8 h-8 text-amber-800" />
+                    <SkipBack className="w-8 h-8 text-brand-800" />
                   </button>
 
                   <button
                     onClick={handlePlayPause}
-                    className="p-5 bg-amber-600 hover:bg-amber-700 rounded-full transition-colors shadow-lg"
+                    className="p-5 bg-brand-600 hover:bg-brand-700 rounded-full transition-colors shadow-lg"
                     title={tocando ? 'Pausar' : 'Reproduzir'}
                   >
                     {tocando ? (
@@ -1970,30 +2008,30 @@ const handleLogin = async (email, senha) => {
                   </button>
 
                   <button 
-                    className="p-3 hover:bg-amber-100 rounded-full transition-colors"
+                    className="p-3 hover:bg-neutral-100 rounded-full transition-colors"
                     onClick={() => audioRef.current && (audioRef.current.currentTime = Math.min(duracao, audioRef.current.currentTime + 10))}
                     title="Avançar 10 segundos"
                   >
-                    <SkipForward className="w-8 h-8 text-amber-800" />
+                    <SkipForward className="w-8 h-8 text-brand-800" />
                   </button>
                 </div>
 
                 {/* Rodapé fixo de controles (mobile) */}
                 {capituloAtual.audio_url && (
-                  <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-amber-200 shadow-[0_-2px_8px_rgba(0,0,0,0.06)] md:static md:rounded-lg md:mt-6">
+                  <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-neutral-200 shadow-[0_-2px_8px_rgba(0,0,0,0.06)] md:static md:rounded-lg md:mt-6">
                     <div className="max-w-4xl mx-auto p-3 md:p-4 flex flex-wrap items-center gap-3">
                       <div className="flex md:hidden items-center justify-center gap-8 w-full">
                         <button 
-                          className="p-4 hover:bg-amber-100 rounded-full transition-colors min-h-[44px]"
+                          className="p-4 hover:bg-neutral-100 rounded-full transition-colors min-h-[44px]"
                           onClick={() => audioRef.current && (audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10))}
                           title="Voltar 10 segundos"
                         >
-                          <SkipBack className="w-8 h-8 text-amber-800" />
+                          <SkipBack className="w-8 h-8 text-brand-800" />
                         </button>
 
                         <button
                           onClick={handlePlayPause}
-                          className="p-5 bg-amber-600 hover:bg-amber-700 rounded-full transition-colors shadow-lg min-h-[48px]"
+                          className="p-5 bg-brand-600 hover:bg-brand-700 rounded-full transition-colors shadow-lg min-h-[48px]"
                           title={tocando ? 'Pausar' : 'Reproduzir'}
                         >
                           {tocando ? (
@@ -2004,11 +2042,11 @@ const handleLogin = async (email, senha) => {
                         </button>
 
                         <button 
-                          className="p-4 hover:bg-amber-100 rounded-full transition-colors min-h-[44px]"
+                          className="p-4 hover:bg-neutral-100 rounded-full transition-colors min-h-[44px]"
                           onClick={() => audioRef.current && (audioRef.current.currentTime = Math.min(duracao, audioRef.current.currentTime + 10))}
                           title="Avançar 10 segundos"
                         >
-                          <SkipForward className="w-8 h-8 text-amber-800" />
+                          <SkipForward className="w-8 h-8 text-brand-800" />
                         </button>
                         
                         {/* Botão Marcar como Lido no mobile */}
@@ -2033,12 +2071,12 @@ const handleLogin = async (email, senha) => {
                       </div>
                       {/* Controle de velocidade */}
                       <div className="flex items-center gap-2">
-                        <Settings className="w-5 h-5 text-amber-600" />
+                        <Settings className="w-5 h-5 text-brand-600" />
                         <label className="text-xs font-semibold text-amber-700">Velocidade:</label>
                         <select
                           value={velocidade.toString()}
                           onChange={(e) => handleVelocidade(parseFloat(e.target.value))}
-                          className="bg-white border border-amber-300 rounded px-2 py-1 text-sm text-amber-900"
+                          className="bg-white border border-neutral-300 rounded px-2 py-1 text-sm text-brand-900"
                         >
                           <option value="0.75">0.75x</option>
                           <option value="1">1.0x</option>
@@ -2050,15 +2088,15 @@ const handleLogin = async (email, senha) => {
 
                       {/* Controle de delay de sincronização */}
                       <div className="flex items-center gap-2 flex-1">
-                        <span className="text-xs font-semibold text-amber-700">Sincronização:</span>
+                        <span className="text-xs font-semibold text-brand-700">Sincronização:</span>
                         <button
                           onClick={() => setDelaySync(d => Math.round((d - 0.5) * 10) / 10)}
-                          className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1 rounded font-bold text-sm"
+                          className="bg-accent-500 hover:bg-accent-600 text-white px-3 py-1 rounded font-bold text-sm"
                           title="Atrasar legenda (clique se ela está adiantada)"
                         >
                           ← Atrasar
                         </button>
-                        <span className="text-base font-mono font-bold text-amber-900 min-w-[4rem] text-center bg-white px-3 py-1 rounded border border-amber-300">
+                        <span className="text-base font-mono font-bold text-brand-900 min-w-[4rem] text-center bg-white px-3 py-1 rounded border border-neutral-300">
                           {delaySync > 0 ? '+' : ''}{delaySync.toFixed(1)}s
                         </span>
                         <button
@@ -2087,7 +2125,7 @@ const handleLogin = async (email, senha) => {
                     <button
                       onClick={handleCapituloAnterior}
                       disabled={carregando}
-                      className={`flex-1 px-3 py-2 rounded-lg font-medium text-white text-sm transition-all duration-200 bg-amber-600 hover:bg-amber-700 shadow-md ${
+                      className={`flex-1 px-3 py-2 rounded-lg font-medium text-white text-sm transition-all duration-200 bg-brand-600 hover:bg-brand-700 shadow-md ${
                         carregando ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
                       }`}
                     >
@@ -2099,7 +2137,7 @@ const handleLogin = async (email, senha) => {
                     <button
                       onClick={handleProximoCapitulo}
                       disabled={carregando}
-                      className={`flex-1 px-3 py-2 rounded-lg font-medium text-white text-sm transition-all duration-200 bg-amber-600 hover:bg-amber-700 shadow-md ${
+                      className={`flex-1 px-3 py-2 rounded-lg font-medium text-white text-sm transition-all duration-200 bg-brand-600 hover:bg-brand-700 shadow-md ${
                         carregando ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'
                       }`}
                     >
@@ -2152,6 +2190,18 @@ const handleLogin = async (email, senha) => {
     );
   }
 
+  if (tela === 'home') {
+    return (
+      <Home
+        onGoBiblia={() => setTela('livros')}
+        onGoPlanos={() => setTela('planos-leitura')}
+        onGoCatequese={() => setTela('catequese')}
+        onGoOracoes={() => setTela('oracoes')}
+        onGoSantos={() => setTela('santos-list')}
+      />
+    )
+  }
+
   // Tela de Planos de Leitura
   if (tela === 'planos-leitura') {
     return (
@@ -2187,6 +2237,81 @@ const handleLogin = async (email, senha) => {
         onVoltar={() => setTela('planos-leitura')}
       />
     );
+  }
+
+  if (tela === 'catequese') {
+    return (
+      <CatequeseList
+        onVoltar={() => setTela('livros')}
+        onOpenDetail={(item) => {
+          setCatequeseItem(item)
+          setTela('catequese-detalhe')
+        }}
+      />
+    )
+  }
+
+  if (tela === 'catequese-detalhe') {
+    return (
+      <CatequeseDetail
+        item={catequeseItem}
+        onVoltar={() => setTela('catequese')}
+      />
+    )
+  }
+
+  if (tela === 'oracoes') {
+    return (
+      <OracoesList
+        onVoltar={() => setTela('livros')}
+        onOpenDetail={(item) => {
+          setOracaoItem(item)
+          setTela('oracao-detalhe')
+        }}
+      />
+    )
+  }
+
+  if (tela === 'oracao-detalhe') {
+    return (
+      <OracaoDetail
+        item={oracaoItem}
+        onVoltar={() => setTela('oracoes')}
+      />
+    )
+  }
+
+  if (tela === 'santos-list') {
+    return (
+      <SantosList
+        onVoltar={() => setTela('home')}
+        onOpenDetail={(item) => { setTela('santos-detalhe'); setCatequeseItem(null); setOracaoItem(null); setSantoItem(item) }}
+      />
+    )
+  }
+  if (tela === 'santos-detalhe') {
+    return (
+      <SantosDetail
+        item={santoItem}
+        onVoltar={() => setTela('santos-list')}
+      />
+    )
+  }
+
+  if (tela === 'admin-catequese' && isAdmin) {
+    return <AdminCatequese onVoltar={() => setTela('menu')} />
+  }
+
+  if (tela === 'admin-oracoes' && isAdmin) {
+    return <AdminOracoes onVoltar={() => setTela('menu')} />
+  }
+
+  if (tela === 'admin-santos' && isAdmin) {
+    return <AdminSantos onVoltar={() => setTela('menu')} />
+  }
+
+  if (tela === 'admin-imagens' && isAdmin) {
+    return <AdminImagens onVoltar={() => setTela('menu')} />
   }
 
   return null;

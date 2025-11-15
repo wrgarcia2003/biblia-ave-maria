@@ -248,10 +248,10 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-amber-900">Planos de Leitura</h2>
+        <h2 className="text-2xl font-bold text-brand-900">Planos de Leitura</h2>
         <button
           onClick={onVoltar}
-          className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-accent-100 text-accent-800 rounded-lg hover:bg-accent-200 transition-colors"
         >
           <ArrowLeft size={20} />
           Voltar
@@ -260,13 +260,13 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
 
       {/* Plano Ativo */}
       {planoAtivo ? (
-        <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-amber-500">
+        <div className="bg-white rounded-lg shadow-md p-6 border-l-4 border-accent-500">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-xl font-semibold text-amber-900">
+              <h3 className="text-xl font-semibold text-brand-900">
                 Plano Ativo: {planoAtivo.tipos_planos_leitura?.nome}
               </h3>
-              <p className="text-sm text-amber-700 mt-1">
+              <p className="text-sm text-brand-700 mt-1">
                 Registrado em: {new Date(planoAtivo.created_at || planoAtivo.data_inicio).toLocaleDateString('pt-BR')}
               </p>
             </div>
@@ -294,8 +294,8 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
 
           {statusPlano && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div className="text-center p-3 bg-blue-50 rounded">
-                <div className="text-2xl font-bold text-blue-600">
+              <div className="text-center p-3 bg-brand-50 rounded">
+                <div className="text-2xl font-bold text-brand-600">
                   {statusPlano.percentual_concluido}%
                 </div>
                 <div className="text-sm text-blue-800">Progresso</div>
@@ -306,8 +306,8 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
                 </div>
                 <div className="text-sm text-green-800">Capítulos Lidos</div>
               </div>
-              <div className="text-center p-3 bg-amber-50 rounded">
-                <div className="text-2xl font-bold text-amber-600">
+              <div className="text-center p-3 bg-accent-50 rounded">
+                <div className="text-2xl font-bold text-accent-600">
                   {statusPlano.dias_restantes}
                 </div>
                 <div className="text-sm text-amber-800">Dias Restantes</div>
@@ -329,8 +329,8 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
 
           {/* Capítulos de hoje */}
           {capitulosHoje && capitulosHoje.capitulos_programados && (
-            <div className="bg-amber-50 border border-amber-200 rounded p-4">
-              <h4 className="font-medium text-amber-900 mb-2 flex items-center gap-2">
+            <div className="bg-accent-50 border border-accent-200 rounded p-4">
+              <h4 className="font-medium text-brand-900 mb-2 flex items-center gap-2">
                 <Target size={16} />
                 Leitura de Hoje
               </h4>
@@ -359,9 +359,9 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
                       const estaLido = capitulosLidos.has(capituloKey);
                       
                       return (
-                        <div key={index} className="flex items-center justify-between p-3 bg-white rounded border border-amber-200 hover:bg-amber-25 transition-colors">
+                        <div key={index} className="flex items-center justify-between p-3 bg-white rounded border border-neutral-200 hover:bg-neutral-50 transition-colors">
                           <div className="flex-1">
-                            <div className="text-sm font-medium text-amber-900">
+                            <div className="text-sm font-medium text-brand-900">
                               {cap.livro_nome} - Capítulo {capituloNumero}
                             </div>
                           </div>
@@ -370,7 +370,7 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
                             className={`flex items-center gap-2 px-3 py-1 rounded transition-colors text-sm font-semibold ${
                               estaLido 
                                 ? 'bg-green-600 text-white hover:bg-green-700' 
-                                : 'bg-blue-600 text-white hover:bg-blue-700'
+                                : 'bg-brand-600 text-white hover:bg-brand-700'
                             }`}
                             disabled={carregando}
                           >
@@ -403,15 +403,15 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
         /* Sem plano ativo */
         <div className="bg-white rounded-lg shadow-md p-8 text-center">
           <BookOpen size={48} className="mx-auto text-amber-500 mb-4" />
-          <h3 className="text-xl font-semibold text-amber-900 mb-2">
+          <h3 className="text-xl font-semibold text-brand-900 mb-2">
             Nenhum Plano de Leitura Ativo
           </h3>
-          <p className="text-amber-700 mb-6">
+          <p className="text-brand-700 mb-6">
             Crie um plano personalizado para organizar sua leitura da Bíblia
           </p>
           <button
             onClick={() => setTela('criar')}
-            className="flex items-center gap-2 px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors mx-auto"
+            className="flex items-center gap-2 px-6 py-3 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors mx-auto"
           >
             <Play size={20} />
             Criar Plano de Leitura
@@ -432,10 +432,10 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-amber-900">Criar Plano de Leitura</h2>
+          <h2 className="text-2xl font-bold text-brand-900">Criar Plano de Leitura</h2>
           <button
             onClick={() => setTela('dashboard')}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-accent-100 text-accent-800 rounded-lg hover:bg-accent-200 transition-colors"
           >
             <ArrowLeft size={20} />
             Voltar
@@ -447,7 +447,7 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
           <div className="space-y-6">
             {/* Tipo de Plano */}
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-amber-900 mb-4">1. Escolha a Duração</h3>
+              <h3 className="text-lg font-semibold text-brand-900 mb-4">1. Escolha a Duração</h3>
               <div className="space-y-3">
                 {(tiposPlanos || []).map(tipo => (
                   <label key={tipo.id} className="flex items-center p-3 border rounded-lg cursor-pointer hover:bg-amber-50">
@@ -460,8 +460,8 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
                       className="mr-3"
                     />
                     <div>
-                      <div className="font-medium text-amber-900">{tipo.nome}</div>
-                      <div className="text-sm text-amber-700">
+                      <div className="font-medium text-brand-900">{tipo.nome}</div>
+                      <div className="text-sm text-brand-700">
                         {tipo.duracao_dias} dias • {tipo.descricao}
                       </div>
                     </div>
@@ -472,18 +472,18 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
 
             {/* Ponto de Início */}
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-semibold text-amber-900 mb-4">2. Escolha o Ponto de Início</h3>
+              <h3 className="text-lg font-semibold text-brand-900 mb-4">2. Escolha o Ponto de Início</h3>
               
               {/* Seleção de Livro */}
               <div className="mb-4">
-                <label className="block text-sm font-medium text-amber-800 mb-2">Livro:</label>
+                <label className="block text-sm font-medium text-brand-800 mb-2">Livro:</label>
                 <select
                   value={livroInicio?.id || ''}
                   onChange={(e) => {
                     const livro = livros.find(l => l.id === parseInt(e.target.value));
                     if (livro) handleSelecionarLivro(livro);
                   }}
-                  className="w-full p-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                 >
                   <option value="">Selecione um livro...</option>
                   {(livros || []).map(livro => (
@@ -497,11 +497,11 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
               {/* Seleção de Capítulo */}
               {livroInicio && (
                 <div>
-                  <label className="block text-sm font-medium text-amber-800 mb-2">Capítulo:</label>
+                  <label className="block text-sm font-medium text-brand-800 mb-2">Capítulo:</label>
                   <select
                     value={capituloInicio}
                     onChange={(e) => setCapituloInicio(parseInt(e.target.value))}
-                    className="w-full p-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                    className="w-full p-3 border border-neutral-300 rounded-lg focus:ring-2 focus:ring-brand-500 focus:border-transparent"
                   >
                     {livroInicio?.total_capitulos ? Array.from({ length: livroInicio.total_capitulos }, (_, i) => i + 1).map(num => (
                       <option key={num} value={num}>Capítulo {num}</option>
@@ -517,19 +517,19 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
             {/* Previsão */}
             {previsao && (
               <div className="bg-white rounded-lg shadow-md p-6">
-                <h3 className="text-lg font-semibold text-amber-900 mb-4">Previsão do Plano</h3>
+                <h3 className="text-lg font-semibold text-brand-900 mb-4">Previsão do Plano</h3>
                 <div className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-amber-700">Capítulos restantes:</span>
-                    <span className="font-medium text-amber-900">{previsao.capitulosRestantes}</span>
+                    <span className="text-brand-700">Capítulos restantes:</span>
+                    <span className="font-medium text-brand-900">{previsao.capitulosRestantes}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-amber-700">Capítulos por dia:</span>
-                    <span className="font-medium text-amber-900">{previsao.capitulosPorDia}</span>
+                    <span className="text-brand-700">Capítulos por dia:</span>
+                    <span className="font-medium text-brand-900">{previsao.capitulosPorDia}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-amber-700">Data prevista de conclusão:</span>
-                    <span className="font-medium text-amber-900">{previsao.dataFim}</span>
+                    <span className="text-brand-700">Data prevista de conclusão:</span>
+                    <span className="font-medium text-brand-900">{previsao.dataFim}</span>
                   </div>
                 </div>
               </div>
@@ -540,7 +540,7 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
               <button
                 onClick={handleCriarPlano}
                 disabled={!planoSelecionado || !livroInicio || !capituloInicio || carregando}
-                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 {carregando ? (
                   <>

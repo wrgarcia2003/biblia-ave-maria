@@ -246,14 +246,14 @@ const ProgressoLeitura = ({ usuario, planoAtivo, onVoltar }) => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-amber-900">Progresso de Leitura</h2>
-          <p className="text-amber-700">
+          <h2 className="text-2xl font-bold text-brand-900">Progresso de Leitura</h2>
+          <p className="text-brand-700">
             Plano: {planoAtivo?.tipos_planos_leitura?.nome}
           </p>
         </div>
         <button
           onClick={onVoltar}
-          className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 rounded-lg hover:bg-amber-200 transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-accent-100 text-accent-800 rounded-lg hover:bg-accent-200 transition-colors"
         >
           <ArrowLeft size={20} />
           Voltar
@@ -278,11 +278,11 @@ const ProgressoLeitura = ({ usuario, planoAtivo, onVoltar }) => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow-md p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Target size={20} className="text-blue-600" />
+              <div className="p-2 bg-brand-100 rounded-lg">
+                <Target size={20} className="text-brand-600" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-blue-600">
+                <div className="text-2xl font-bold text-brand-600">
                   {dadosProgresso.percentual_concluido}%
                 </div>
                 <div className="text-sm text-blue-800">Progresso Geral</div>
@@ -306,11 +306,11 @@ const ProgressoLeitura = ({ usuario, planoAtivo, onVoltar }) => {
 
           <div className="bg-white rounded-lg shadow-md p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-amber-100 rounded-lg">
-                <TrendingUp size={20} className="text-amber-600" />
+              <div className="p-2 bg-accent-100 rounded-lg">
+                <TrendingUp size={20} className="text-accent-600" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-amber-600">
+                <div className="text-2xl font-bold text-accent-600">
                   {velocidadeLeitura}
                 </div>
                 <div className="text-sm text-amber-800">Cap./Dia (Média)</div>
@@ -359,11 +359,11 @@ const ProgressoLeitura = ({ usuario, planoAtivo, onVoltar }) => {
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div>
-              <label className="block text-sm font-medium text-amber-800 mb-1">Período:</label>
+              <label className="block text-sm font-medium text-brand-800 mb-1">Período:</label>
               <select
                 value={periodoSelecionado}
                 onChange={(e) => setPeriodoSelecionado(e.target.value)}
-                className="px-3 py-1 border border-amber-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                className="px-3 py-1 border border-neutral-300 rounded focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               >
                 <option value="7">Últimos 7 dias</option>
                 <option value="14">Últimos 14 dias</option>
@@ -372,11 +372,11 @@ const ProgressoLeitura = ({ usuario, planoAtivo, onVoltar }) => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-amber-800 mb-1">Visualização:</label>
+              <label className="block text-sm font-medium text-brand-800 mb-1">Visualização:</label>
               <select
                 value={tipoGrafico}
                 onChange={(e) => setTipoGrafico(e.target.value)}
-                className="px-3 py-1 border border-amber-300 rounded focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                className="px-3 py-1 border border-neutral-300 rounded focus:ring-2 focus:ring-brand-500 focus:border-transparent"
               >
                 <option value="barras">Barras</option>
                 <option value="linha">Linha</option>
@@ -387,11 +387,11 @@ const ProgressoLeitura = ({ usuario, planoAtivo, onVoltar }) => {
           {/* Legenda */}
           <div className="flex items-center gap-4 text-sm">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-blue-500 rounded"></div>
+              <div className="w-4 h-4 bg-brand-600 rounded"></div>
               <span>Capítulos Lidos</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-amber-200 rounded"></div>
+              <div className="w-4 h-4 bg-accent-200 rounded"></div>
               <span>Meta Diária</span>
             </div>
           </div>
@@ -400,7 +400,7 @@ const ProgressoLeitura = ({ usuario, planoAtivo, onVoltar }) => {
 
       {/* Gráfico de Progresso */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-        <h3 className="text-lg font-semibold text-amber-900 mb-4">
+        <h3 className="text-lg font-semibold text-brand-900 mb-4">
           Progresso dos Últimos {periodoSelecionado} Dias
         </h3>
         
@@ -413,7 +413,7 @@ const ProgressoLeitura = ({ usuario, planoAtivo, onVoltar }) => {
             )}
           </div>
         ) : (
-          <div className="text-center py-8 text-amber-600">
+          <div className="text-center py-8 text-brand-600">
             Dados insuficientes para exibir o gráfico
           </div>
         )}
@@ -424,17 +424,17 @@ const ProgressoLeitura = ({ usuario, planoAtivo, onVoltar }) => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Resumo por Livro */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-amber-900 mb-4 flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-brand-900 mb-4 flex items-center gap-2">
               <BookOpen size={20} />
               Progresso por Livro
             </h3>
             
             <div className="space-y-3 max-h-64 overflow-y-auto">
               {estatisticasDetalhadas.progresso_por_livro?.map(livro => (
-                <div key={livro.livro_id} className="flex items-center justify-between p-3 bg-amber-50 rounded">
+                <div key={livro.livro_id} className="flex items-center justify-between p-3 bg-accent-50 rounded">
                   <div>
-                    <div className="font-medium text-amber-900">{livro.livro_nome}</div>
-                    <div className="text-sm text-amber-700">
+                    <div className="font-medium text-brand-900">{livro.livro_nome}</div>
+                    <div className="text-sm text-brand-700">
                       {livro.capitulos_lidos} de {livro.total_capitulos} capítulos
                     </div>
                   </div>
@@ -450,7 +450,7 @@ const ProgressoLeitura = ({ usuario, planoAtivo, onVoltar }) => {
 
           {/* Métricas de Performance */}
           <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-amber-900 mb-4 flex items-center gap-2">
+            <h3 className="text-lg font-semibold text-brand-900 mb-4 flex items-center gap-2">
               <TrendingUp size={20} />
               Métricas de Performance
             </h3>
@@ -478,9 +478,9 @@ const ProgressoLeitura = ({ usuario, planoAtivo, onVoltar }) => {
               </div>
               
               {tempoEstimado && (
-                <div className="flex justify-between items-center p-3 bg-amber-50 rounded">
-                  <span className="text-amber-800">Conclusão estimada:</span>
-                  <span className="font-medium text-amber-900">
+                <div className="flex justify-between items-center p-3 bg-accent-50 rounded">
+                  <span className="text-accent-800">Conclusão estimada:</span>
+                  <span className="font-medium text-brand-900">
                     {tempoEstimado.dataEstimada}
                   </span>
                 </div>
