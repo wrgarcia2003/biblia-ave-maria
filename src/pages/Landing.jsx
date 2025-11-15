@@ -29,7 +29,7 @@ const Landing = ({ onEntrar, onGoBiblia, onGoCatequese, onGoOracoes, onGoSantos 
     })()
   }, [])
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-neutral-50">
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-neutral-50 dark:from-neutral-900 dark:to-neutral-800">
       <NavBar
         onGoBiblia={onGoBiblia}
         onGoCatequese={onGoCatequese}
@@ -40,13 +40,13 @@ const Landing = ({ onEntrar, onGoBiblia, onGoCatequese, onGoOracoes, onGoSantos 
 
       <section className="max-w-6xl mx-auto px-6 py-10 grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
         <div>
-          <h1 className="text-4xl md:text-5xl font-extrabold text-brand-900 leading-tight">Leitura Católica com Áudio, Catequese e Santos do Dia</h1>
-          <p className="mt-4 text-neutral-700 text-lg">A Bíblia Ave Maria com player sincronizado, conteúdos de catequese e uma seleção de orações — tudo em um só lugar, com visual moderno e agradável.</p>
+          <h1 className="text-4xl md:text-5xl font-extrabold text-brand-900 dark:text-neutral-100 leading-tight">Leitura Católica com Áudio, Catequese e Santos do Dia</h1>
+          <p className="mt-4 text-neutral-700 dark:text-neutral-300 text-lg">A Bíblia Ave Maria com player sincronizado, conteúdos de catequese e uma seleção de orações — tudo em um só lugar, com visual moderno e agradável.</p>
           <div className="mt-6 flex flex-wrap gap-3">
             <button onClick={onEntrar} className="px-5 py-3 rounded-lg bg-brand-600 text-white hover:bg-brand-700">Começar Agora</button>
-            <button onClick={onGoBiblia} className="px-5 py-3 rounded-lg bg-brand-100 text-brand-800 hover:bg-brand-200">Bíblia</button>
-            <button onClick={onGoSantos} className="px-5 py-3 rounded-lg bg-accent-100 text-accent-800 hover:bg-accent-200">Santos do Dia</button>
-            <button onClick={onGoCatequese} className="px-5 py-3 rounded-lg bg-neutral-100 text-brand-900 hover:bg-neutral-200">Catequese</button>
+            <button onClick={onGoBiblia} className="px-5 py-3 rounded-lg bg-brand-100 dark:bg-neutral-800 text-brand-800 dark:text-neutral-100 hover:bg-brand-200 dark:hover:bg-neutral-700">Bíblia</button>
+            <button onClick={onGoSantos} className="px-5 py-3 rounded-lg bg-accent-100 dark:bg-neutral-800 text-accent-800 dark:text-neutral-100 hover:bg-accent-200 dark:hover:bg-neutral-700">Santos do Dia</button>
+            <button onClick={onGoCatequese} className="px-5 py-3 rounded-lg bg-brand-600 text-white hover:bg-brand-700">Catequese</button>
           </div>
         </div>
         <div className="relative">
@@ -93,98 +93,98 @@ const Landing = ({ onEntrar, onGoBiblia, onGoCatequese, onGoOracoes, onGoSantos 
             </div>
           ))
         ) : (
-          <div className="text-neutral-700">Nenhuma imagem enviada ainda.</div>
+          <div className="text-neutral-700 dark:text-neutral-300">Nenhuma imagem enviada ainda.</div>
         )}
       </section>
 
       <section className="max-w-6xl mx-auto px-6 py-10">
-        <h2 className="text-2xl md:text-3xl font-bold text-brand-900 mb-6">Como funciona</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-brand-900 dark:text-neutral-100 mb-6">Como funciona</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-neutral-100">
-            <div className="text-sm font-semibold text-brand-600">1. Escolha</div>
-            <div className="mt-2 text-brand-900 font-semibold">Livro, Catequese ou Oração</div>
-            <div className="mt-1 text-neutral-700">Selecione o conteúdo desejado pela navegação ou pela Home.</div>
+          <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 shadow-sm border border-neutral-100 dark:border-neutral-700">
+            <div className="text-sm font-semibold text-brand-600 dark:text-accent-200">1. Escolha</div>
+            <div className="mt-2 text-brand-900 dark:text-neutral-100 font-semibold">Livro, Catequese ou Oração</div>
+            <div className="mt-1 text-neutral-700 dark:text-neutral-300">Selecione o conteúdo desejado pela navegação ou pela Home.</div>
           </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-neutral-100">
-            <div className="text-sm font-semibold text-brand-600">2. Ouça e leia</div>
-            <div className="mt-2 text-brand-900 font-semibold">Player com sincronia</div>
-            <div className="mt-1 text-neutral-700">O texto acompanha o áudio com destaque automático.</div>
+          <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 shadow-sm border border-neutral-100 dark:border-neutral-700">
+            <div className="text-sm font-semibold text-brand-600 dark:text-accent-200">2. Ouça e leia</div>
+            <div className="mt-2 text-brand-900 dark:text-neutral-100 font-semibold">Player com sincronia</div>
+            <div className="mt-1 text-neutral-700 dark:text-neutral-300">O texto acompanha o áudio com destaque automático.</div>
           </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-neutral-100">
-            <div className="text-sm font-semibold text-brand-600">3. Aprofunde</div>
-            <div className="mt-2 text-brand-900 font-semibold">Planos e Santos do Dia</div>
-            <div className="mt-1 text-neutral-700">Organize sua leitura e veja o vídeo e história dos santos.</div>
+          <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 shadow-sm border border-neutral-100 dark:border-neutral-700">
+            <div className="text-sm font-semibold text-brand-600 dark:text-accent-200">3. Aprofunde</div>
+            <div className="mt-2 text-brand-900 dark:text-neutral-100 font-semibold">Planos e Santos do Dia</div>
+            <div className="mt-1 text-neutral-700 dark:text-neutral-300">Organize sua leitura e veja o vídeo e história dos santos.</div>
           </div>
         </div>
       </section>
 
       <section className="max-w-6xl mx-auto px-6 py-10">
-        <h2 className="text-2xl md:text-3xl font-bold text-brand-900 mb-6">Depoimentos</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-brand-900 dark:text-neutral-100 mb-6">Depoimentos</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-neutral-100">
-            <div className="text-neutral-800">“A sincronia do texto com o áudio me ajuda muito na meditação.”</div>
-            <div className="mt-3 text-sm text-neutral-600">Maria, catequista</div>
+          <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 shadow-sm border border-neutral-100 dark:border-neutral-700">
+            <div className="text-neutral-800 dark:text-neutral-100">“A sincronia do texto com o áudio me ajuda muito na meditação.”</div>
+            <div className="mt-3 text-sm text-neutral-600 dark:text-neutral-300">Maria, catequista</div>
           </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-neutral-100">
-            <div className="text-neutral-800">“Gostei das orações com áudio e dos planos de leitura diários.”</div>
-            <div className="mt-3 text-sm text-neutral-600">João, leitor</div>
+          <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 shadow-sm border border-neutral-100 dark:border-neutral-700">
+            <div className="text-neutral-800 dark:text-neutral-100">“Gostei das orações com áudio e dos planos de leitura diários.”</div>
+            <div className="mt-3 text-sm text-neutral-600 dark:text-neutral-300">João, leitor</div>
           </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-neutral-100">
-            <div className="text-neutral-800">“Os Santos do Dia com vídeo e história são um destaque.”</div>
-            <div className="mt-3 text-sm text-neutral-600">Ana, jovem</div>
+          <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 shadow-sm border border-neutral-100 dark:border-neutral-700">
+            <div className="text-neutral-800 dark:text-neutral-100">“Os Santos do Dia com vídeo e história são um destaque.”</div>
+            <div className="mt-3 text-sm text-neutral-600 dark:text-neutral-300">Ana, jovem</div>
           </div>
         </div>
       </section>
 
       <section className="max-w-6xl mx-auto px-6 py-10 grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-neutral-100">
-          <Book className="w-7 h-7 text-brand-600" />
-          <div className="mt-3 font-semibold text-brand-900">Bíblia com Áudio</div>
-          <div className="mt-1 text-neutral-700">Leitura com player e sincronia por versículo.</div>
+        <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 shadow-sm border border-neutral-100 dark:border-neutral-700">
+          <Book className="w-7 h-7 text-brand-600 dark:text-neutral-100" />
+          <div className="mt-3 font-semibold text-brand-900 dark:text-neutral-100">Bíblia com Áudio</div>
+          <div className="mt-1 text-neutral-700 dark:text-neutral-200">Leitura com player e sincronia por versículo.</div>
         </div>
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-neutral-100">
-          <Headphones className="w-7 h-7 text-brand-600" />
-          <div className="mt-3 font-semibold text-brand-900">Catequese</div>
-          <div className="mt-1 text-neutral-700">Aulas com áudio e texto sincronizado.</div>
+        <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 shadow-sm border border-neutral-100 dark:border-neutral-700">
+          <Headphones className="w-7 h-7 text-brand-600 dark:text-neutral-100" />
+          <div className="mt-3 font-semibold text-brand-900 dark:text-neutral-100">Catequese</div>
+          <div className="mt-1 text-neutral-700 dark:text-neutral-200">Aulas com áudio e texto sincronizado.</div>
         </div>
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-neutral-100">
-          <Heart className="w-7 h-7 text-brand-600" />
-          <div className="mt-3 font-semibold text-brand-900">Orações</div>
-          <div className="mt-1 text-neutral-700">Seleção de orações com áudio e texto.</div>
+        <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 shadow-sm border border-neutral-100 dark:border-neutral-700">
+          <Heart className="w-7 h-7 text-brand-600 dark:text-neutral-100" />
+          <div className="mt-3 font-semibold text-brand-900 dark:text-neutral-100">Orações</div>
+          <div className="mt-1 text-neutral-700 dark:text-neutral-200">Seleção de orações com áudio e texto.</div>
         </div>
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-neutral-100">
-          <Calendar className="w-7 h-7 text-brand-600" />
-          <div className="mt-3 font-semibold text-brand-900">Santos do Dia</div>
-          <div className="mt-1 text-neutral-700">Vídeo do YouTube e história escrita.</div>
+        <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 shadow-sm border border-neutral-100 dark:border-neutral-700">
+          <Calendar className="w-7 h-7 text-brand-600 dark:text-neutral-100" />
+          <div className="mt-3 font-semibold text-brand-900 dark:text-neutral-100">Santos do Dia</div>
+          <div className="mt-1 text-neutral-700 dark:text-neutral-200">Vídeo do YouTube e história escrita.</div>
         </div>
       </section>
 
       <section className="max-w-6xl mx-auto px-6 py-10">
-        <h2 className="text-2xl md:text-3xl font-bold text-brand-900 mb-6">Recursos</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-brand-900 dark:text-neutral-100 mb-6">Recursos</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-neutral-100">
-            <div className="font-semibold text-brand-900 mb-2">Design moderno</div>
-            <div className="text-neutral-700">Tema claro/escuro, tipografia legível e cores harmonizadas.</div>
+          <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 shadow-sm border border-neutral-100 dark:border-neutral-700">
+            <div className="font-semibold text-brand-900 dark:text-neutral-100 mb-2">Design moderno</div>
+            <div className="text-neutral-700 dark:text-neutral-200">Tema claro/escuro, tipografia legível e cores harmonizadas.</div>
           </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-neutral-100">
-            <div className="font-semibold text-brand-900 mb-2">Performance</div>
-            <div className="text-neutral-700">Carregamento inteligente e navegação rápida.</div>
+          <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 shadow-sm border border-neutral-100 dark:border-neutral-700">
+            <div className="font-semibold text-brand-900 dark:text-neutral-100 mb-2">Performance</div>
+            <div className="text-neutral-700 dark:text-neutral-200">Carregamento inteligente e navegação rápida.</div>
           </div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-neutral-100">
-            <div className="font-semibold text-brand-900 mb-2">Acessibilidade</div>
-            <div className="text-neutral-700">Contraste, foco visível e controles acessíveis.</div>
+          <div className="bg-white dark:bg-neutral-800 rounded-xl p-6 shadow-sm border border-neutral-100 dark:border-neutral-700">
+            <div className="font-semibold text-brand-900 dark:text-neutral-100 mb-2">Acessibilidade</div>
+            <div className="text-neutral-700 dark:text-neutral-200">Contraste, foco visível e controles acessíveis.</div>
           </div>
         </div>
       </section>
 
       <section className="max-w-6xl mx-auto px-6 py-10">
-        <h2 className="text-2xl md:text-3xl font-bold text-brand-900 mb-6">Contato</h2>
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-neutral-100">
-          <div className="text-neutral-700">Quer colaborar ou enviar sugestões? Entre em contato e participe.</div>
+        <h2 className="text-2xl md:text-3xl font-bold text-brand-900 dark:text-neutral-100 mb-6">Contato</h2>
+        <div className="bg-white dark:bg-neutral-900 rounded-2xl p-6 shadow-sm border border-neutral-100 dark:border-neutral-800">
+          <div className="text-neutral-700 dark:text-neutral-300">Quer colaborar ou enviar sugestões? Entre em contato e participe.</div>
           <div className="mt-4 flex flex-wrap gap-3">
-            <a href="https://wa.me/" target="_blank" rel="noreferrer" className="px-4 py-2 rounded-lg bg-neutral-100 text-brand-900 hover:bg-neutral-200">WhatsApp</a>
-            <a href="https://instagram.com/" target="_blank" rel="noreferrer" className="px-4 py-2 rounded-lg bg-neutral-100 text-brand-900 hover:bg-neutral-200">Instagram</a>
-            <a href="https://youtube.com/" target="_blank" rel="noreferrer" className="px-4 py-2 rounded-lg bg-neutral-100 text-brand-900 hover:bg-neutral-200">YouTube</a>
+            <a href="https://wa.me/" target="_blank" rel="noreferrer" className="px-4 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-brand-900 dark:text-neutral-100 hover:bg-neutral-200 dark:hover:bg-neutral-700">WhatsApp</a>
+            <a href="https://instagram.com/" target="_blank" rel="noreferrer" className="px-4 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-brand-900 dark:text-neutral-100 hover:bg-neutral-200 dark:hover:bg-neutral-700">Instagram</a>
+            <a href="https://youtube.com/" target="_blank" rel="noreferrer" className="px-4 py-2 rounded-lg bg-neutral-100 dark:bg-neutral-800 text-brand-900 dark:text-neutral-100 hover:bg-neutral-200 dark:hover:bg-neutral-700">YouTube</a>
           </div>
         </div>
       </section>

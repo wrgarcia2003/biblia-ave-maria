@@ -16,6 +16,7 @@ import Home from './pages/Home'
 import Landing from './pages/Landing'
 import SantosList from './pages/SantosList'
 import SantosDetail from './pages/SantosDetail'
+import NavBar from './components/NavBar'
 import AdminCatequese from './pages/AdminCatequese'
 import AdminOracoes from './pages/AdminOracoes'
 import AdminSantos from './pages/AdminSantos'
@@ -529,54 +530,60 @@ const handleLogin = async (email, senha) => {
   // =====================================================
   
   // Função para marcar capítulo como lido no player
-  const handleMarcarCapituloLidoPlayer = async () => {
-    if (!capituloAtual || !usuario || !planoAtivo) {
+const handleMarcarCapituloLidoPlayer = async () => {
+  if (!capituloAtual || !usuario || !planoAtivo) {
       setErro('É necessário ter um plano ativo para marcar capítulos como lidos.');
       setTimeout(() => setErro(''), 3000);
       return;
     }
     
-    try {
-      setCarregando(true);
+  try {
+    setCarregando(true);
+    const anterior = capituloLido
+    setCapituloLido(!anterior)
+    setCapituloLidoVisual(!anterior)
       
       // Importar o serviço dinamicamente se necessário
       const planosService = await import('./services/planosLeituraService');
       
-      if (!capituloLido) {
-        // Marcar como lido
-        await planosService.marcarCapituloLido(
-          planoAtivo.id, // Usando o ID do plano ativo
-          capituloAtual.livro_id,
-          capituloAtual.numero,
-          true
-        );
-        setMensagem('✅ Capítulo marcado como lido!');
-      } else {
-        // Desmarcar
-        await planosService.desmarcarCapituloLido(
-          planoAtivo.id, // Usando o ID do plano ativo
-          capituloAtual.livro_id,
-          capituloAtual.numero
-        );
-        setMensagem('📖 Capítulo desmarcado.');
-      }
+    if (!capituloLido) {
+      // Marcar como lido
+      await planosService.marcarCapituloLido(
+        planoAtivo.id, // Usando o ID do plano ativo
+        capituloAtual.livro_id,
+        capituloAtual.numero,
+        true
+      );
+      setMensagem('✅ Capítulo marcado como lido!');
+    } else {
+      // Desmarcar
+      await planosService.desmarcarCapituloLido(
+        planoAtivo.id, // Usando o ID do plano ativo
+        capituloAtual.livro_id,
+        capituloAtual.numero
+      );
+      setMensagem('📖 Capítulo desmarcado.');
+    }
       
-      // Verificar o status real do capítulo após a operação
-      await verificarCapituloLido();
+      setTimeout(() => { verificarCapituloLido(); }, 400);
       
       // Limpar mensagem após 3 segundos
       setTimeout(() => setMensagem(''), 3000);
       
-    } catch (error) {
-      console.error('Erro ao marcar capítulo:', error);
-      setErro('Erro ao marcar capítulo como lido.');
-      setTimeout(() => setErro(''), 3000);
-    } finally {
-      setCarregando(false);
-    }
-  };
+  } catch (error) {
+    console.error('Erro ao marcar capítulo:', error);
+    setCapituloLido(prev => !prev)
+    setCapituloLidoVisual(prev => !prev)
+    setErro('Erro ao marcar capítulo como lido.');
+    setTimeout(() => setErro(''), 3000);
+  } finally {
+    setCarregando(false);
+  }
+};
 
   // Função para verificar se o capítulo atual está lido
+  const [capituloLidoVisual, setCapituloLidoVisual] = useState(false)
+
   const verificarCapituloLido = React.useCallback(async () => {
     if (!capituloAtual || !usuario || !planoAtivo) return;
 
@@ -591,7 +598,8 @@ const handleLogin = async (email, senha) => {
         cap.lido === true
       );
 
-      setCapituloLido(!!capituloLido);
+      const lido = !!capituloLido
+      setCapituloLido(lido)
     } catch (error) {
       console.error('Erro ao verificar status do capítulo:', error);
     }
@@ -603,6 +611,7 @@ const handleLogin = async (email, senha) => {
       verificarCapituloLido();
     }
   }, [capituloAtual, usuario, planoAtivo, tela, verificarCapituloLido]);
+
 
   // Função para navegar para o capítulo anterior
   const handleCapituloAnterior = async () => {
@@ -1275,12 +1284,12 @@ const handleLogin = async (email, senha) => {
   }
   if (tela === 'login') {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-brand-50 to-neutral-50 flex items-center justify-center p-6">
-        <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full">
+      <div className="min-h-screen bg-gradient-to-br from-brand-50 to-neutral-50 dark:from-neutral-900 dark:to-neutral-800 flex items-center justify-center p-6">
+        <div className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl p-8 max-w-md w-full border border-neutral-200 dark:border-neutral-800">
           <div className="text-center mb-8">
             <Book className="w-16 h-16 text-brand-600 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold text-brand-900">Bíblia Ave Maria</h1>
-            <p className="text-brand-600 mt-2">Versão com Áudio</p>
+            <h1 className="text-3xl font-bold text-brand-900 dark:text-neutral-100">Bíblia Ave Maria</h1>
+            <p className="text-brand-600 dark:text-neutral-300 mt-2">Versão com Áudio</p>
           </div>
 
           <form onSubmit={(e) => {
@@ -1297,7 +1306,7 @@ const handleLogin = async (email, senha) => {
                 <input
                   type="email"
                   name="email"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-brand-500"
                   placeholder="seu@email.com"
                   required
                 />
@@ -1308,7 +1317,7 @@ const handleLogin = async (email, senha) => {
                 <input
                   type="password"
                   name="senha"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-brand-500"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-brand-500"
                   placeholder="••••••••"
                   required
                 />
@@ -1339,7 +1348,7 @@ const handleLogin = async (email, senha) => {
   // =====================================================
   if (tela === 'menu' && isAdmin) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-brand-50 to-neutral-50">
+      <div className="min-h-screen bg-gradient-to-br from-brand-50 to-neutral-50 dark:from-neutral-900 dark:to-neutral-800">
         <div className="max-w-4xl mx-auto p-6 pb-24 md:pb-0">
           <div className="flex justify-between items-center mb-8">
             <div>
@@ -2054,15 +2063,15 @@ const handleLogin = async (email, senha) => {
                           onClick={handleMarcarCapituloLidoPlayer}
                           disabled={carregando}
                           className={`p-4 rounded-full transition-colors min-h-[44px] ${
-                            capituloLido
+                            capituloLidoVisual
                               ? 'bg-green-600 hover:bg-green-700'
                               : 'bg-blue-600 hover:bg-blue-700'
                           } ${carregando ? 'opacity-50 cursor-not-allowed' : ''}`}
-                          title={capituloLido ? 'Capítulo Lido' : 'Marcar como Lido'}
+                          title={capituloLidoVisual ? 'Capítulo Lido' : 'Marcar como Lido'}
                         >
                           {carregando ? (
                             <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          ) : capituloLido ? (
+                          ) : capituloLidoVisual ? (
                             <span className="text-white text-xl">✓</span>
                           ) : (
                             <span className="text-white text-xl">📖</span>
@@ -2163,7 +2172,7 @@ const handleLogin = async (email, senha) => {
                 onClick={handleMarcarCapituloLidoPlayer}
                 disabled={carregando}
                 className={`w-full px-6 py-3 rounded-lg font-semibold text-white transition-all duration-200 ${
-                  capituloLido
+                  capituloLidoVisual
                     ? 'bg-green-600 hover:bg-green-700 shadow-lg'
                     : 'bg-blue-600 hover:bg-blue-700 shadow-lg'
                 } ${carregando ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
@@ -2173,7 +2182,7 @@ const handleLogin = async (email, senha) => {
                     <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     Processando...
                   </span>
-                ) : capituloLido ? (
+                ) : capituloLidoVisual ? (
                   <span className="flex items-center gap-2 justify-center">
                     ✅ Capítulo Lido
                   </span>
@@ -2205,14 +2214,26 @@ const handleLogin = async (email, senha) => {
   // Tela de Planos de Leitura
   if (tela === 'planos-leitura') {
     return (
-      <PlanosLeitura 
-        usuario={usuario}
-        livros={livros}
-        onVoltar={() => setTela('livros')}
-        onCarregarCapitulos={carregarCapitulos}
-        onNavigateToChecklist={() => setTela('checklist-leitura')}
-        onNavigateToProgress={() => setTela('progresso-leitura')}
-      />
+      <>
+        <NavBar
+          onGoLanding={() => setTela('landing')}
+          onGoBiblia={() => setTela('livros')}
+          onGoCatequese={() => setTela('catequese')}
+          onGoOracoes={() => setTela('oracoes')}
+          onGoSantos={() => setTela('santos-list')}
+          onEntrar={() => setTela('login')}
+          onLogout={handleLogout}
+          usuario={usuario}
+        />
+        <PlanosLeitura 
+          usuario={usuario}
+          livros={livros}
+          onVoltar={() => setTela('livros')}
+          onCarregarCapitulos={carregarCapitulos}
+          onNavigateToChecklist={() => setTela('checklist-leitura')}
+          onNavigateToProgress={() => setTela('progresso-leitura')}
+        />
+      </>
     );
   }
 
@@ -2241,60 +2262,132 @@ const handleLogin = async (email, senha) => {
 
   if (tela === 'catequese') {
     return (
-      <CatequeseList
-        onVoltar={() => setTela('livros')}
-        onOpenDetail={(item) => {
-          setCatequeseItem(item)
-          setTela('catequese-detalhe')
-        }}
-      />
+      <>
+        <NavBar
+          onGoLanding={() => setTela('landing')}
+          onGoBiblia={() => setTela('livros')}
+          onGoCatequese={() => setTela('catequese')}
+          onGoOracoes={() => setTela('oracoes')}
+          onGoSantos={() => setTela('santos-list')}
+          onEntrar={() => setTela('login')}
+          onLogout={handleLogout}
+          usuario={usuario}
+        />
+        <CatequeseList
+          onVoltar={() => setTela('livros')}
+          onOpenDetail={(item) => {
+            setCatequeseItem(item)
+            setTela('catequese-detalhe')
+          }}
+        />
+      </>
     )
   }
 
   if (tela === 'catequese-detalhe') {
     return (
-      <CatequeseDetail
-        item={catequeseItem}
-        onVoltar={() => setTela('catequese')}
-      />
+      <>
+        <NavBar
+          onGoLanding={() => setTela('landing')}
+          onGoBiblia={() => setTela('livros')}
+          onGoCatequese={() => setTela('catequese')}
+          onGoOracoes={() => setTela('oracoes')}
+          onGoSantos={() => setTela('santos-list')}
+          onEntrar={() => setTela('login')}
+          onLogout={handleLogout}
+          usuario={usuario}
+        />
+        <CatequeseDetail
+          item={catequeseItem}
+          onVoltar={() => setTela('catequese')}
+        />
+      </>
     )
   }
 
   if (tela === 'oracoes') {
     return (
-      <OracoesList
-        onVoltar={() => setTela('livros')}
-        onOpenDetail={(item) => {
-          setOracaoItem(item)
-          setTela('oracao-detalhe')
-        }}
-      />
+      <>
+        <NavBar
+          onGoLanding={() => setTela('landing')}
+          onGoBiblia={() => setTela('livros')}
+          onGoCatequese={() => setTela('catequese')}
+          onGoOracoes={() => setTela('oracoes')}
+          onGoSantos={() => setTela('santos-list')}
+          onEntrar={() => setTela('login')}
+          onLogout={handleLogout}
+          usuario={usuario}
+        />
+        <OracoesList
+          onVoltar={() => setTela('livros')}
+          onOpenDetail={(item) => {
+            setOracaoItem(item)
+            setTela('oracao-detalhe')
+          }}
+        />
+      </>
     )
   }
 
   if (tela === 'oracao-detalhe') {
     return (
-      <OracaoDetail
-        item={oracaoItem}
-        onVoltar={() => setTela('oracoes')}
-      />
+      <>
+        <NavBar
+          onGoLanding={() => setTela('landing')}
+          onGoBiblia={() => setTela('livros')}
+          onGoCatequese={() => setTela('catequese')}
+          onGoOracoes={() => setTela('oracoes')}
+          onGoSantos={() => setTela('santos-list')}
+          onEntrar={() => setTela('login')}
+          onLogout={handleLogout}
+          usuario={usuario}
+        />
+        <OracaoDetail
+          item={oracaoItem}
+          onVoltar={() => setTela('oracoes')}
+        />
+      </>
     )
   }
 
   if (tela === 'santos-list') {
     return (
-      <SantosList
-        onVoltar={() => setTela('home')}
-        onOpenDetail={(item) => { setTela('santos-detalhe'); setCatequeseItem(null); setOracaoItem(null); setSantoItem(item) }}
-      />
+      <>
+        <NavBar
+          onGoLanding={() => setTela('landing')}
+          onGoBiblia={() => setTela('livros')}
+          onGoCatequese={() => setTela('catequese')}
+          onGoOracoes={() => setTela('oracoes')}
+          onGoSantos={() => setTela('santos-list')}
+          onEntrar={() => setTela('login')}
+          onLogout={handleLogout}
+          usuario={usuario}
+        />
+        <SantosList
+          onVoltar={() => setTela('home')}
+          onOpenDetail={(item) => { setTela('santos-detalhe'); setCatequeseItem(null); setOracaoItem(null); setSantoItem(item) }}
+        />
+      </>
     )
   }
   if (tela === 'santos-detalhe') {
     return (
-      <SantosDetail
-        item={santoItem}
-        onVoltar={() => setTela('santos-list')}
-      />
+      <>
+        <NavBar
+          onGoLanding={() => setTela('landing')}
+          onGoBiblia={() => setTela('livros')}
+          onGoCatequese={() => setTela('catequese')}
+          onGoOracoes={() => setTela('oracoes')}
+          onGoSantos={() => setTela('santos-list')}
+          onEntrar={() => setTela('login')}
+          onLogout={handleLogout}
+          usuario={usuario}
+        />
+        <SantosDetail
+          item={santoItem}
+          onVoltar={() => setTela('santos-list')}
+        />
+      </>
     )
   }
 

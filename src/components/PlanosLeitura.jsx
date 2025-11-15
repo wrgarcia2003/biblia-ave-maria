@@ -215,9 +215,14 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
       // Verificar se o capítulo já está lido
       const capituloKey = `${livroId}-${capituloNumero}`;
       const estaLido = capitulosLidos.has(capituloKey);
-      
+      // Atualização visual imediata
+      setCapitulosLidos(prev => {
+        const next = new Set(prev)
+        if (estaLido) next.delete(capituloKey)
+        else next.add(capituloKey)
+        return next
+      })
 
-      
       if (estaLido) {
         // Se está lido, desmarcar
         await planosService.desmarcarCapituloLido(planoAtivo.id, livroId, capituloNumero);
@@ -226,8 +231,27 @@ const PlanosLeitura = ({ usuario, livros, onVoltar, onCarregarCapitulos }) => {
         await planosService.marcarCapituloLido(planoAtivo.id, livroId, capituloNumero, true);
       }
       
-      // Recarregar dados para atualizar o status
+      // Recarregar dados para atualizar o status agregado
       await carregarDadosIniciais();
+
+      // Suprimir aviso de atraso se os capítulos de hoje estiverem todos lidos
+      try {
+        if (capitulosHoje?.capitulos_programados) {
+          let caps = []
+          const src = capitulosHoje.capitulos_programados
+          if (Array.isArray(src)) caps = src
+          else if (typeof src === 'string') caps = JSON.parse(src)
+          else if (typeof src === 'object') caps = [src]
+          const allRead = caps.every(c => {
+            const num = c.capitulo_numero || c.capitulo
+            const key = `${c.livro_id}-${num}`
+            return capitulosLidos.has(key) || (!estaLido && key === capituloKey)
+          })
+          if (allRead) {
+            setStatusPlano(prev => prev ? { ...prev, esta_atrasado: false, dias_atraso: 0 } : prev)
+          }
+        }
+      } catch (_) {}
       
       // Mostrar feedback visual
       // TODO: Adicionar toast ou notificação de sucesso
