@@ -8,8 +8,10 @@ const Carousel = ({ images = [], interval = 4000 }) => {
     return () => clearInterval(t)
   }, [images, interval])
   const current = images[idx]
+  if (!current) return null
   const onErr = (e) => {
-    e.currentTarget.src = 'https://via.placeholder.com/1600x900?text=Imagem'
+    const svg = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900"><rect width="100%" height="100%" fill="#e5e7eb"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#6b7280" font-size="48">Imagem</text></svg>')
+    e.currentTarget.src = `data:image/svg+xml;charset=UTF-8,${svg}`
   }
   return (
     <div className="relative rounded-2xl overflow-hidden shadow-2xl border border-neutral-200">

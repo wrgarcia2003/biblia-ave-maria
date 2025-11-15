@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { ArrowLeft, Upload, Image as ImageIcon } from 'lucide-react'
-import { listObjects, publicUrl, uploadObject } from '../services/storageService'
+import { listObjects, publicUrl, uploadObjectWithProgress, uploadObject } from '../services/storageService'
+import { supabaseClient } from '../lib/supabase'
 
 const slugify = (s) => s
   .normalize('NFD')
@@ -16,6 +17,9 @@ const AdminImagens = ({ onVoltar }) => {
   const [erro, setErro] = useState('')
   const [imagens, setImagens] = useState([])
   const [processando, setProcessando] = useState(false)
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [sessaoOk, setSessaoOk] = useState(false)
+  const [ultimoStatus, setUltimoStatus] = useState(null)
   const [meta, setMeta] = useState({})
 
   const carregar = async () => {
@@ -50,18 +54,28 @@ const AdminImagens = ({ onVoltar }) => {
   }
 
   useEffect(() => { carregar() }, [])
+  useEffect(() => {
+    supabaseClient.auth.getSession().then(({ data }) => {
+      setSessaoOk(!!data?.session?.access_token)
+    })
+  }, [])
 
   const handleUpload = async (e) => {
     const file = e.target.files?.[0]
     if (!file) return
     setProcessando(true)
+    setUploadProgress(0)
     setErro('')
     try {
+      if (!sessaoOk) {
+        throw new Error('Sessão ausente')
+      }
       const nameBase = file.name?.split('.')?.slice(0, -1).join('.') || 'imagem'
       const ext = file.name?.split('.')?.pop() || 'jpg'
       const name = `${slugify(nameBase)}.${ext}`
-      const ok = await uploadObject(BUCKET, file, name)
-      if (!ok) throw new Error('Falha no upload')
+      const result = await uploadObjectWithProgress(BUCKET, file, name, (p) => setUploadProgress(p))
+      setUltimoStatus(result?.status ?? null)
+      if (!result?.ok) throw new Error('Falha no upload')
       await carregar()
       try {
         const imagesForIndex = imagens.map((i) => ({ name: i.name, ...(meta[i.name] || {}) }))
@@ -69,7 +83,7 @@ const AdminImagens = ({ onVoltar }) => {
         await uploadObject(BUCKET, indexBlob, 'index.json')
       } catch (_) {}
     } catch (e) {
-      setErro('Erro ao enviar imagem. Verifique permissões e bucket público.')
+      setErro(`Erro ao enviar imagem. ${ultimoStatus ? `Status ${ultimoStatus}. ` : ''}Verifique sessão, permissões e bucket público.`)
     } finally {
       setProcessando(false)
       e.target.value = ''
@@ -91,7 +105,8 @@ const AdminImagens = ({ onVoltar }) => {
           <ArrowLeft className="w-5 h-5" />
           Voltar
         </button>
-        <h1 className="text-2xl font-bold text-brand-900 mb-6">Gerenciar Imagens da Landing</h1>
+        <h1 className="text-2xl font-bold text-brand-900 mb-2">Gerenciar Imagens da Landing</h1>
+        <div className={`mb-4 text-sm ${sessaoOk ? 'text-green-700' : 'text-red-700'}`}>{sessaoOk ? 'Sessão Supabase: OK' : 'Sessão Supabase: ausente. Faça login para enviar.'}</div>
         {erro && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-700">{erro}</div>
         )}
@@ -102,10 +117,17 @@ const AdminImagens = ({ onVoltar }) => {
                 <Upload className="w-4 h-4" />
                 Enviar Imagem
               </div>
-              <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={processando} />
+              <input type="file" accept="image/*" className="hidden" onChange={handleUpload} disabled={processando || !sessaoOk} />
             </label>
-            <button onClick={atualizarIndex} className="px-4 py-2 rounded-lg bg-neutral-100 text-brand-900 hover:bg-neutral-200">Atualizar Lista</button>
-            {processando && <div className="text-sm text-brand-700">Processando...</div>}
+            <button onClick={atualizarIndex} className="px-4 py-2 rounded-lg bg-neutral-100 text-brand-900 hover:bg-neutral-200">Salvar</button>
+            {processando && (
+              <div className="flex items-center gap-3">
+                <div className="w-40 h-2 bg-neutral-200 rounded-full overflow-hidden">
+                  <div className="h-2 bg-brand-600" style={{ width: `${uploadProgress}%` }} />
+                </div>
+                <div className="text-sm text-brand-700">{uploadProgress}%</div>
+              </div>
+            )}
           </div>
         </div>
 

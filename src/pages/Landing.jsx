@@ -16,15 +16,16 @@ const Landing = ({ onEntrar, onGoBiblia, onGoCatequese, onGoOracoes, onGoSantos 
         if (res.ok) {
           const data = await res.json()
           const names = Array.isArray(data.images) ? data.images : []
-          const imgs = names.map(n => ({ src: publicUrl(BUCKET, n), title: n }))
-          if (imgs.length > 0) { setImages(imgs); return }
+          const imgs = names.map(n => (
+            typeof n === 'string'
+              ? { src: publicUrl(BUCKET, n), title: '' }
+              : { src: publicUrl(BUCKET, n.name), title: n.title || '', credit: n.credit || '', featured: !!n.featured, order: Number(n.order || 0) }
+          ))
+          setImages(imgs)
+          return
         }
       } catch (_) {}
-      setImages([
-        { src: 'https://upload.wikimedia.org/wikipedia/commons/0/0b/Basilica_di_San_Pietro_in_Vaticano_September_2015-1.jpg', title: 'Basílica de São Pedro' },
-        { src: 'https://upload.wikimedia.org/wikipedia/commons/3/3f/K%C3%B6lner_Dom_von_S%C3%BCden_2012.jpg', title: 'Catedral de Colônia' },
-        { src: 'https://upload.wikimedia.org/wikipedia/commons/7/7d/Sagrada_Familia_5-DSC_0212.jpg', title: 'Sagrada Família' },
-      ])
+      setImages([])
     })()
   }, [])
   return (
@@ -49,12 +50,16 @@ const Landing = ({ onEntrar, onGoBiblia, onGoCatequese, onGoOracoes, onGoSantos 
           </div>
         </div>
         <div className="relative">
-          <Carousel images={[...images].sort((a, b) => {
-            const fa = a.featured ? 0 : 1
-            const fb = b.featured ? 0 : 1
-            if (fa !== fb) return fa - fb
-            return (a.order || 0) - (b.order || 0)
-          })} interval={5000} />
+          {images.length > 0 ? (
+            <Carousel images={[...images].sort((a, b) => {
+              const fa = a.featured ? 0 : 1
+              const fb = b.featured ? 0 : 1
+              if (fa !== fb) return fa - fb
+              return (a.order || 0) - (b.order || 0)
+            })} interval={5000} />
+          ) : (
+            <div className="rounded-2xl border border-neutral-200 h-[360px] bg-neutral-100" />
+          )}
           <div className="absolute -bottom-6 -left-6 bg-white rounded-xl shadow-lg p-4 border border-neutral-100 hidden md:flex items-center gap-3">
             <Headphones className="w-6 h-6 text-brand-600" />
             <div>
@@ -66,27 +71,30 @@ const Landing = ({ onEntrar, onGoBiblia, onGoCatequese, onGoOracoes, onGoSantos 
       </section>
 
       <section className="max-w-6xl mx-auto px-6 py-8 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-        {[...images].sort((a, b) => {
-          const fa = a.featured ? 0 : 1
-          const fb = b.featured ? 0 : 1
-          if (fa !== fb) return fa - fb
-          return (a.order || 0) - (b.order || 0)
-        }).map((img, i) => (
-          <div key={i} className="group relative overflow-hidden rounded-xl shadow-sm border border-neutral-100">
-            <img
-              src={img.src}
-              alt={img.title}
-              className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
-              referrerPolicy="no-referrer"
-              onError={(e) => { e.currentTarget.src = 'https://via.placeholder.com/800x600?text=Imagem' }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-neutral-900/50 to-transparent"></div>
-            <div className="absolute bottom-2 left-2 text-white drop-shadow">
-              {img.title && (<div className="font-medium">{img.title}</div>)}
-              {img.credit && (<div className="text-xs">{img.credit}</div>)}
+        {images.length > 0 ? (
+          [...images].sort((a, b) => {
+            const fa = a.featured ? 0 : 1
+            const fb = b.featured ? 0 : 1
+            if (fa !== fb) return fa - fb
+            return (a.order || 0) - (b.order || 0)
+          }).map((img, i) => (
+            <div key={i} className="group relative overflow-hidden rounded-xl shadow-sm border border-neutral-100">
+              <img
+                src={img.src}
+                alt={img.title}
+                className="w-full h-40 object-cover transition-transform duration-300 group-hover:scale-105"
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-neutral-900/50 to-transparent"></div>
+              <div className="absolute bottom-2 left-2 text-white drop-shadow">
+                {img.title && (<div className="font-medium">{img.title}</div>)}
+                {img.credit && (<div className="text-xs">{img.credit}</div>)}
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        ) : (
+          <div className="text-neutral-700">Nenhuma imagem enviada ainda.</div>
+        )}
       </section>
 
       <section className="max-w-6xl mx-auto px-6 py-10">
